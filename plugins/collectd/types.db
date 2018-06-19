@@ -1,0 +1,4 @@
+current_power_w         value:GAUGE:0:U
+current_consumption_w   value:GAUGE:0:U
+total_yield_kwh         value:GAUGE:0:U
+total_consumption_kwh   value:GAUGE:0:U
