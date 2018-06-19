@@ -1,0 +1,22 @@
+---
+- name: Bootstrap Meteo
+  hosts: all
+  become: true
+  become_user: root
+  become_method: sudo
+  pre_tasks:
+    - name: "Purge broken Java"
+      raw: apt-get purge -y openjdk-8-jre-headless
+    - name: "Reinstall Java headless"
+      raw: apt-get install -y openjdk-8-jre-headless
+    - name: "Reinstall Java JRE"
+      raw: apt-get install -y openjdk-8-jre
+    - name: "Install aptitude, required by Ansible, missing in Ubuntu 16.04 LTS"
+      raw: apt-get install python-minimal aptitude -y
+    - name: "Upgrade all packages"
+      apt:
+        update_cache: yes
+        cache_valid_time: 300
+        upgrade: yes
+  roles:
+    - common

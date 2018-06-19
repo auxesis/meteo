@@ -1,0 +1,4 @@
+# Install
+- name: Install utility packages
+  apt: name="{{ utility_packages }}"
+  state: present

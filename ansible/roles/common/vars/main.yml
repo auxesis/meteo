@@ -1,0 +1,18 @@
+github_users:
+ - auxesis
+
+utility_packages:
+ - screen
+ - vim
+ - man-db
+ - file
+ - mtr
+ - traceroute
+ - lsof
+ - rsync
+ - telnet
+ - nmap
+ - python-pip
+ - strace
+ - sysstat
+ - ntp
