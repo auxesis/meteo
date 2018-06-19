@@ -9,8 +9,6 @@ import aiohttp
 import pysma
 import time
 
-from pprint import pprint
-
 # This module will work with Python 3.4+
 # Python 3.4+ "@asyncio.coroutine" decorator
 # Python 3.5+ uses "async def f()" syntax
@@ -44,11 +42,7 @@ def main(loop, password, ip, interval):
     session = aiohttp.ClientSession(loop=loop)
     sma = pysma.SMA(session, ip, password=password,
                     group=pysma.GROUP_USER)
-#    pprint(vars(sma))
     yield from sma.new_session()
-#    _LOGGER.info("NEW SID: %s", sma._sma_sid)
-
-#    import code; code.interact(local=dict(globals(), **locals()))
 
     while loop.jk_run:
         res = yield from sma.read([ m['key'] for m in METRICS ])
