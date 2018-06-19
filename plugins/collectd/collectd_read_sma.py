@@ -50,7 +50,8 @@ def main(loop, password, ip, interval):
         for idx, metric in enumerate(METRICS):
             try:
                 value = res[idx] if res[idx] != None else 0
-                print("PUTVAL \"{}\" interval={} {}:{}".format(metric['name'], interval, int(t), value), flush=True)
+                name = metric['name'].format(host)
+                print("PUTVAL \"{}\" interval={} {}:{}".format(name, interval, int(t), value), flush=True)
             except TypeError:
                 pass
 
@@ -66,16 +67,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Poll an SMA webconnect instance for metrics, and expose them to collectd.')
     parser.add_argument(
-        'ip', type=str, help='IP address of the Webconnect module')
-#    parser.add_argument(
-#        'password', help='User password')
-    password = '***REMOVED***'
+        '--address', type=str, required=True, help='Network address of the Webconnect instance')
+    parser.add_argument(
+        '--password', type=str required=True, help='User password')
+    parser.add_argument(
+        '--host', type=str, required=True, help='Hostname to report collectd metric as')
+    parser.add_argument(
+        '--interval', type=int, default=10, help='Interval to emit metrics at')
 
     args = parser.parse_args()
 
     loop = asyncio.get_event_loop()
     try:
         setattr(loop, "jk_run", True)
-        loop.run_until_complete(main(loop, password=password, ip=args.ip, interval=10))
+        loop.run_until_complete(main(loop, password=password, ip=args.ip, host=args.host, interval=args.interval))
     finally:
         loop.close()
