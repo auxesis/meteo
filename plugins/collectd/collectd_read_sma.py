@@ -21,19 +21,19 @@ args = None
 
 METRICS = [
     {
-        'name': '***REMOVED***/sma/current_power_w',
+        'name': '{}/sma/current_power_w',
         'key': pysma.KEY_CURRENT_POWER_W
     },
     {
-        'name': '***REMOVED***/sma/current_consumption_w',
+        'name': '{}/sma/current_consumption_w',
         'key': pysma.KEY_CURRENT_CONSUMPTION_W
     },
     {
-        'name': '***REMOVED***/sma/total_yield_kwh',
+        'name': '{}/sma/total_yield_kwh',
         'key': pysma.KEY_TOTAL_YIELD_KWH
     },
     {
-        'name': '***REMOVED***/sma/total_consumption_kwh',
+        'name': '{}/sma/total_consumption_kwh',
         'key': pysma.KEY_TOTAL_CONSUMPTION_KWH
     }
 ]
