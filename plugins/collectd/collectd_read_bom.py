@@ -53,11 +53,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Turn weather readings into collectd metrics')
     parser.add_argument(
-        'host', type=str, help='Hostname to report collectd metric as')
+        '--host', type=str, required=True, help='Hostname to report collectd metric as')
     parser.add_argument(
-        'area_id', type=str, help='Area id of station')
+        '--area-id', type=str, required=True, help='Area id of station')
     parser.add_argument(
-        'station_id', type=str, help='Station id of station')
+        '--station-id', type=str, required=True, help='Station id of station')
     parser.add_argument(
         '--interval', type=int, default=60, help='Interval to run the check at')
 
