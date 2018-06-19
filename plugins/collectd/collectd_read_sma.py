@@ -37,10 +37,10 @@ METRICS = [
 ]
 
 @asyncio.coroutine
-def main(loop, password, ip, interval):
+def main(loop, address, password, host, interval):
     """Main loop."""
     session = aiohttp.ClientSession(loop=loop)
-    sma = pysma.SMA(session, ip, password=password,
+    sma = pysma.SMA(session, address, password=password,
                     group=pysma.GROUP_USER)
     yield from sma.new_session()
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--address', type=str, required=True, help='Network address of the Webconnect instance')
     parser.add_argument(
-        '--password', type=str required=True, help='User password')
+        '--password', type=str, required=True, help='User password')
     parser.add_argument(
         '--host', type=str, required=True, help='Hostname to report collectd metric as')
     parser.add_argument(
@@ -80,6 +80,6 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     try:
         setattr(loop, "jk_run", True)
-        loop.run_until_complete(main(loop, password=password, ip=args.ip, host=args.host, interval=args.interval))
+        loop.run_until_complete(main(loop, password=args.password, address=args.address, host=args.host, interval=args.interval))
     finally:
         loop.close()
