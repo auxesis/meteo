@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--station-id', type=str, required=True, help='Station id of station')
     parser.add_argument(
-        '--interval', type=int, default=60, help='Interval to run the check at')
+        '--interval', type=int, default=60, help='Interval to emit metrics at')
 
     args = parser.parse_args()
 
