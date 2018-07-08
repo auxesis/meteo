@@ -20,3 +20,4 @@
         upgrade: yes
   roles:
     - common
+    - monitoring
