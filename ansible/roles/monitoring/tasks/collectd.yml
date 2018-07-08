@@ -1,0 +1,23 @@
+# Install
+- name: Install collectd
+  apt: name=collectd
+
+# Config
+- name: Copy collectd.conf
+  synchronize: src=collectd.conf dest=/etc/collectd/collectd.conf archive=no checksum=yes
+  register: collectd_config
+
+- name: Copy collectd plugins
+  synchronize: src=conf.d dest=/etc/collectd recursive=yes archive=no checksum=yes delete=yes
+  register: collectd_plugins_config
+
+# Service
+- name: Start collectd on boot
+  service: name=collectd enabled=yes
+
+- name: Restart collectd if config has changed
+  service: name=collectd state=restarted
+  when: collectd_config.changed or collectd_plugins_config.changed
+
+- name: Ensure collectd is running
+  service: name=collectd state=started

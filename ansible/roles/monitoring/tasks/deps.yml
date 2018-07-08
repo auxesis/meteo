@@ -1,0 +1,5 @@
+- name: Install build deps
+  apt: name="{{ collectd_build_deps }}"
+
+- name: Install digitemp
+  apt: name="digitemp"

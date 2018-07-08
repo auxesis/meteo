@@ -1,0 +1,26 @@
+# meteo
+- name: Clone meteo repo
+  git:
+    repo: "https://github.com/auxesis/meteo.git"
+    dest: /opt/meteo
+
+- name: Install plugin dependencies
+  pip:
+    requirements: /opt/meteo/plugins/collectd/requirements.txt
+    executable: pip3
+
+- name: Set up types.db
+  file:
+    src: /opt/meteo/plugins/collectd/types.db
+    dest: /usr/share/collectd/types.local.db
+    owner: root
+    group: root
+    state: link
+
+- name: Set up collectd_read_bom.py
+  file:
+    src: /opt/meteo/plugins/collectd/types.db
+    dest: /usr/share/collectd/types.local.db
+    owner: root
+    group: root
+    state: link

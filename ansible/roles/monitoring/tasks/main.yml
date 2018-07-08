@@ -1,0 +1,3 @@
+- import_tasks: deps.yml
+- import_tasks: plugins.yml
+- import_tasks: collectd.yml
