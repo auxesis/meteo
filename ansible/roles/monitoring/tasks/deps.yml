@@ -3,3 +3,6 @@
 
 - name: Install digitemp
   apt: name="digitemp"
+
+- name: Copy /etc/digitemp.conf
+  synchronize: src=digitemp.conf/{{ ansible_nodename }} dest=/etc/digitemp.conf archive=no checksum=yes
