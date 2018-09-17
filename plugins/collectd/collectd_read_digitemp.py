@@ -24,7 +24,7 @@ METRICS = [
 @asyncio.coroutine
 def digitemp_read_temperature(keys):
     try:
-        cmd = 'digitemp_DS9097 -q -t 0 -s /dev/ttyUSB0 -r 1000 -o "%.2C"'
+        cmd = 'digitemp_DS9097 -c /etc/digitemp.conf -q -t 0 -s /dev/ttyUSB0 -r 1000 -o "%.2C"'
         for line in os.popen(cmd).readlines():
             return [ line.strip() ]
     except:
