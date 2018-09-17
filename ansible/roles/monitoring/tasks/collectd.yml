@@ -7,8 +7,8 @@
   synchronize: src=collectd.conf dest=/etc/collectd/collectd.conf archive=no checksum=yes
   register: collectd_config
 
-- name: Copy collectd plugins
-  synchronize: src=conf.d dest=/etc/collectd recursive=yes archive=no checksum=yes delete=yes
+- name: Copy collectd plugin config
+  synchronize: src=conf.d/{{ ansible_nodename }}/ dest=/etc/collectd/collectd.conf.d archive=no checksum=yes delete=yes recursive=yes
   register: collectd_plugins_config
 
 # Service
