@@ -22,11 +22,12 @@ METRICS = [
 ]
 
 @asyncio.coroutine
-def digitemp_read_temperature(keys):
+def digitemp_read_temperature():
     try:
-        cmd = 'digitemp_DS9097 -c /etc/digitemp.conf -q -t 0 -s /dev/ttyUSB0 -r 1000 -o "%.2C"'
-        for line in os.popen(cmd).readlines():
-            return [ line.strip() ]
+        # cmd = 'digitemp_DS9097 -q -t 0 -s /dev/ttyUSB0 -r 1000 -o "%.2C"'
+        cmd = 'digitemp_DS9097 -q -s /dev/ttyUSB0 -r 1000 -o "%.2C" -i /etc/digitemprc -t 0'
+        output = os.popen(cmd).readlines()[-1].strip()
+        return [ output ]
     except:
         return []
 
@@ -34,10 +35,10 @@ def digitemp_read_temperature(keys):
 def main(loop, host, plugin, interval):
     """Main loop."""
     while loop.jk_run:
-        res = yield from digitemp_read_temperature([ m['key'] for m in METRICS ])
+        res = yield from digitemp_read_temperature()
         t = time.time()
         for idx, metric in enumerate(METRICS):
-            value = res[idx] if res[idx] != None else 0
+            value = res[idx] if res != None and res[idx] != None else 0
             name = metric['name'].format(host, plugin)
             print("PUTVAL \"{}\" interval={} {}:{}".format(name, interval, int(t), value), flush=True)
         yield from asyncio.sleep(interval)
