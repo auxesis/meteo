@@ -7,6 +7,7 @@ import aiohttp
 import time
 import requests
 import argparse
+import traceback
 
 # This module will work with Python 3.4+
 # Python 3.4+ "@asyncio.coroutine" decorator
@@ -28,7 +29,12 @@ METRICS = [
 @asyncio.coroutine
 def bom_read(area_id, station_id, keys):
     url = "http://www.bom.gov.au/fwo/{}/{}.{}.json".format(area_id, area_id, station_id)
-    r = requests.get(url)
+    try:
+        r = requests.get(url, timeout=10)
+    except:
+        _LOGGER.error(traceback.format_exc())
+        _LOGGER.error("Failed when making GET request to URL {}".format(url))
+        sys.exit(1)
     try:
         sample = r.json()['observations']['data'][0]
         return [ sample[k] for k in keys ]
@@ -48,7 +54,7 @@ def main(loop, host, area_id, station_id, interval):
         yield from asyncio.sleep(interval)
 
 if __name__ == "__main__":
-    logging.basicConfig(stream=sys.stdout, level=logging.CRITICAL)
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     parser = argparse.ArgumentParser(
         description='Turn weather readings into collectd metrics')
@@ -72,3 +78,7 @@ if __name__ == "__main__":
         setattr(loop, "jk_run", False)
         loop.run_forever()
         _LOGGER.info('Done (Ctrl-C)')
+    except Exception:
+        _LOGGER.error(traceback.format_exc())
+        _LOGGER.error('Unhandled error. Exiting.')
+        sys.exit(1)
