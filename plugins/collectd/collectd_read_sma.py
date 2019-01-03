@@ -2,6 +2,7 @@
 """Basic usage example and testing of pysma."""
 # from time import sleep
 import asyncio
+import async_timeout
 import logging
 import sys
 import argparse
@@ -32,16 +33,22 @@ METRICS = [
     {"name": "{}/sma/total_consumption_kwh", "sensor": sensor("total_consumption")},
 ]
 
-@asyncio.coroutine
-def main(loop, address, password, host, interval):
+
+async def main(loop, address, password, host, interval):
     """Main loop."""
     session = aiohttp.ClientSession(loop=loop)
-    sma = pysma.SMA(session, address, password=password,
-                    group=pysma.GROUP_USER)
-    yield from sma.new_session()
+    sma = pysma.SMA(session, address, password=password, group="user")
+    await sma.new_session()
 
-    while loop.jk_run:
-        res = yield from sma.read([ m['key'] for m in METRICS ])
+    while True:
+        try:
+            with async_timeout.timeout(20):
+                res = await sma.read([m["sensor"] for m in METRICS])
+        except asyncio.TimeoutError:
+            _LOGGER.error(traceback.format_exc())
+            _LOGGER.error("Timeout when talking to SMA inverter")
+            sys.exit(3)
+
         t = time.time()
         for idx, metric in enumerate(METRICS):
             try:
@@ -51,10 +58,10 @@ def main(loop, address, password, host, interval):
             except TypeError:
                 pass
 
-        yield from asyncio.sleep(interval)
+        await asyncio.sleep(interval)
 
-    yield from sma.close_session()
-    yield from session.close()
+    await sma.close_session()
+    await session.close()
 
 
 if __name__ == "__main__":
