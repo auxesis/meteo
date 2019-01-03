@@ -8,6 +8,7 @@ import argparse
 import aiohttp
 import pysma
 import time
+import traceback
 
 # This module will work with Python 3.4+
 # Python 3.4+ "@asyncio.coroutine" decorator
