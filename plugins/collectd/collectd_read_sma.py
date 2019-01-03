@@ -17,23 +17,19 @@ _LOGGER = logging.getLogger(__name__)
 
 args = None
 
+
+def sensor(name):
+    try:
+        return next(s for s in pysma.SENSORS if s.name == name)
+    except StopIteration:
+        return None
+
+
 METRICS = [
-    {
-        'name': '{}/sma/current_power_w',
-        'key': pysma.KEY_CURRENT_POWER_W
-    },
-    {
-        'name': '{}/sma/current_consumption_w',
-        'key': pysma.KEY_CURRENT_CONSUMPTION_W
-    },
-    {
-        'name': '{}/sma/total_yield_kwh',
-        'key': pysma.KEY_TOTAL_YIELD_KWH
-    },
-    {
-        'name': '{}/sma/total_consumption_kwh',
-        'key': pysma.KEY_TOTAL_CONSUMPTION_KWH
-    }
+    {"name": "{}/sma/current_power_w", "sensor": sensor("current_power")},
+    {"name": "{}/sma/current_consumption_w", "sensor": sensor("current_consumption")},
+    {"name": "{}/sma/total_yield_kwh", "sensor": sensor("total_yield")},
+    {"name": "{}/sma/total_consumption_kwh", "sensor": sensor("total_consumption")},
 ]
 
 @asyncio.coroutine
