@@ -52,8 +52,13 @@ async def main(loop, address, password, host, interval):
         for idx, metric in enumerate(METRICS):
             try:
                 value = res[idx] if res[idx] != None else 0
-                name = metric['name'].format(host)
-                print("PUTVAL \"{}\" interval={} {}:{}".format(name, interval, int(t), value), flush=True)
+                name = metric["name"].format(host)
+                print(
+                    'PUTVAL "{}" interval={} {}:{}'.format(
+                        name, interval, int(t), value
+                    ),
+                    flush=True,
+                )
             except TypeError:
                 pass
 
@@ -67,21 +72,35 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     parser = argparse.ArgumentParser(
-        description='Poll an SMA webconnect instance for metrics, and expose them to collectd.')
+        description="Poll an SMA webconnect instance for metrics, and expose them to collectd."
+    )
     parser.add_argument(
-        '--address', type=str, required=True, help='Network address of the Webconnect instance')
+        "--address",
+        type=str,
+        required=True,
+        help="Network address of the Webconnect instance",
+    )
+    parser.add_argument("--password", type=str, required=True, help="User password")
     parser.add_argument(
-        '--password', type=str, required=True, help='User password')
+        "--host", type=str, required=True, help="Hostname to report collectd metric as"
+    )
     parser.add_argument(
-        '--host', type=str, required=True, help='Hostname to report collectd metric as')
-    parser.add_argument(
-        '--interval', type=int, default=10, help='Interval to emit metrics at')
+        "--interval", type=int, default=10, help="Interval to emit metrics at"
+    )
 
     args = parser.parse_args()
 
     loop = asyncio.get_event_loop()
     try:
-        setattr(loop, "jk_run", True)
-        loop.run_until_complete(main(loop, password=args.password, address=args.address, host=args.host, interval=args.interval))
+        loop.run_until_complete(
+            main(
+                loop,
+                password=args.password,
+                address=args.address,
+                host=args.host,
+                interval=args.interval,
+            )
+        )
     finally:
         loop.close()
+        sys.exit(0)
