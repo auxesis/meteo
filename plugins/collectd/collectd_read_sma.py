@@ -102,6 +102,9 @@ if __name__ == "__main__":
                 interval=args.interval,
             )
         )
+    except Exception:
+        loop.close()
+        sys.exit(2)
     finally:
         loop.close()
         sys.exit(0)
