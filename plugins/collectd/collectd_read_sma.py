@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Basic usage example and testing of pysma."""
-# from time import sleep
+"""Collectd read plugin for SMA Sunny Boy inverters."""
 import asyncio
 import async_timeout
 import logging
