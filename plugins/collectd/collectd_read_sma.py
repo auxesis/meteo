@@ -64,7 +64,7 @@ async def main(loop, address, password, host, interval):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(stream=sys.stdout, level=logging.CRITICAL)
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     parser = argparse.ArgumentParser(
         description='Poll an SMA webconnect instance for metrics, and expose them to collectd.')
