@@ -81,9 +81,14 @@ if __name__ == "__main__":
         required=True,
         help="Network address of the Webconnect instance",
     )
-    parser.add_argument("--password", type=str, required=True, help="User password")
     parser.add_argument(
-        "--host", type=str, required=True, help="Hostname to report collectd metric as"
+        "--password",
+        type=str,
+        required=True,
+        help="User password for Webconnect instance",
+    )
+    parser.add_argument(
+        "--host", type=str, required=True, help="Hostname to report collectd metrics as"
     )
     parser.add_argument(
         "--interval", type=int, default=10, help="Interval to emit metrics at"
