@@ -16,3 +16,5 @@ utility_packages:
  - strace
  - sysstat
  - ntp
+ - git
+ - python3-pip
