@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Collectd read plugin for SMA Sunny Boy inverters."""
+import atexit
 import asyncio
 import async_timeout
 import logging
@@ -9,10 +10,6 @@ import aiohttp
 import pysma
 import time
 import traceback
-
-# This module will work with Python 3.4+
-# Python 3.4+ "@asyncio.coroutine" decorator
-# Python 3.5+ uses "async def f()" syntax
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,39 +31,45 @@ METRICS = [
 ]
 
 
+def putval(res):
+    t = time.time()
+    for idx, metric in enumerate(METRICS):
+        try:
+            value = res[idx] if res[idx] != None else 0
+            name = metric["name"].format(host)
+            print(
+                'PUTVAL "{}" interval={} {}:{}'.format(name, interval, int(t), value),
+                flush=True,
+            )
+        except TypeError:
+            pass
+
+
+async def cleanup(sma, session):
+    print("Cleaning up sessions...")
+    await sma.close_session()
+    await session.close()
+
+
 async def main(loop, address, password, host, interval):
     """Main loop."""
     session = aiohttp.ClientSession(loop=loop)
     sma = pysma.SMA(session, address, password=password, group="user")
     await sma.new_session()
 
+    atexit.register(await cleanup, sma, session)
+
     while True:
         try:
             with async_timeout.timeout(20):
                 res = await sma.read([m["sensor"] for m in METRICS])
+            putval(res)
         except asyncio.TimeoutError:
             _LOGGER.error(traceback.format_exc())
             _LOGGER.error("Timeout when talking to SMA inverter")
             sys.exit(3)
 
-        t = time.time()
-        for idx, metric in enumerate(METRICS):
-            try:
-                value = res[idx] if res[idx] != None else 0
-                name = metric["name"].format(host)
-                print(
-                    'PUTVAL "{}" interval={} {}:{}'.format(
-                        name, interval, int(t), value
-                    ),
-                    flush=True,
-                )
-            except TypeError:
-                pass
-
         await asyncio.sleep(interval)
-
-    await sma.close_session()
-    await session.close()
 
 
 if __name__ == "__main__":
@@ -107,6 +110,10 @@ if __name__ == "__main__":
                 interval=args.interval,
             )
         )
+    except KeyboardInterrupt:
+        print("Caught C-c – exiting.")
+        loop.close()
+        sys.exit(0)
     except Exception:
         loop.close()
         sys.exit(2)
