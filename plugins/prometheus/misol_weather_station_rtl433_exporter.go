@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,19 +14,22 @@ import (
 
 // Metrics represents metrics to be exported
 type Metrics struct {
+	battery       prometheus.Gauge
 	temperature   prometheus.Gauge
 	humidity      prometheus.Gauge
 	windDirection prometheus.Gauge
 	windAvg       prometheus.Gauge
 	windMax       prometheus.Gauge
 	rain          prometheus.Counter
-	uvi           prometheus.Gauge
-	lightLux      prometheus.Gauge
 }
 
 // NewMetrics registers new metrics to export
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m := &Metrics{
+		battery: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "outdoor_battery",
+			Help: "Current battery status of weather station.",
+		}),
 		temperature: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "outdoor_temperature_celsius",
 			Help: "Current temperature outside of house.",
@@ -41,52 +43,27 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Help: "Direction of wind in degrees.",
 		}),
 		windAvg: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "outdoor_wind_speed_average_meters_per_second",
-			Help: "Average wind speed in meters per second.",
+			Name: "outdoor_wind_speed_average_kilometers_per_hour",
+			Help: "Average wind speed in kilometers per hour.",
 		}),
 		windMax: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "outdoor_wind_speed_average_max_per_second",
-			Help: "Max wind speed in meters per second.",
+			Name: "outdoor_wind_speed_average_max_kilometers_per_hour",
+			Help: "Max wind speed in kilometers per hour.",
 		}),
 		rain: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "outdoor_rain_millimetres",
 			Help: "Rainfall",
 		}),
-		uvi: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "outdoor_uv_index_level",
-			Help: "Ultraviolet radiaton. Each point is 25 milliWatts/square metre of UV radiation.",
-		}),
-		lightLux: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "outdoor_light_lux",
-			Help: "Light level intensity.",
-		}),
 	}
+	reg.MustRegister(m.battery)
 	reg.MustRegister(m.temperature)
 	reg.MustRegister(m.humidity)
 	reg.MustRegister(m.windDirection)
 	reg.MustRegister(m.windAvg)
 	reg.MustRegister(m.windMax)
 	reg.MustRegister(m.rain)
-	reg.MustRegister(m.uvi)
-	reg.MustRegister(m.lightLux)
 
 	return m
-}
-
-// Measurement represents a reading from the weather station
-type Measurement struct {
-	time          time.Time `json:"time"`
-	model         string    `json:"model"`
-	id            int       `json:"id"`
-	batteryOK     bool      `json:"battery_ok"`
-	temperatureC  big.Float `json:"temperature_C"`
-	humidity      int       `json:"humidity"`
-	windDirection int       `json:"wind_dir_deg"`
-	windAvg       big.Float `json:"wind_avg_m_s"`
-	windMax       big.Float `json:"wind_avg_m_s"`
-	rain          big.Float `json:"rain_mm"`
-	uvi           int       `json:"uvi"`
-	lightlux      big.Float `json:"light_lux"`
 }
 
 func readMeasurementLoop(metrics *Metrics) {
@@ -109,31 +86,81 @@ func readMeasurementLoop(metrics *Metrics) {
 
 // Measurements tracks the types of measurements we receive
 var Measurements = map[string]string{
-	"time":          "time",
-	"model":         "string",
-	"id":            "int",
-	"battery_ok":    "bool",
-	"temperature_C": "decimal",
-	"humidity":      "int",
-	"wind_dir_deg":  "int",
-	"wind_avg_km_h": "decimal",
-	"wind_max_km_h": "decimal",
-	"rain_mm":       "decimal",
+	"time":          "time",    // "2023-02-23 11:22:24"
+	"model":         "string",  // "Fineoffset-WHx080"
+	"id":            "int",     // 240
+	"battery_ok":    "bool",    // 1
+	"temperature_C": "decimal", // 20.800
+	"humidity":      "int",     // 68
+	"wind_dir_deg":  "int",     // 135
+	"wind_avg_km_h": "decimal", // 1.224
+	"wind_max_km_h": "decimal", // 2.448
+	"rain_mm":       "decimal", // 70.200
 }
 
 func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 	return func(c mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("message: %+v\n", msg)
-		fmt.Printf("topic: %s\npayload: %s\n", msg.Topic(), msg.Payload())
-
+		/*
+			fmt.Printf("message: %+v\n", msg)
+			fmt.Printf("topic: %s\npayload: %s\n", msg.Topic(), msg.Payload())
+		*/
 		parts := strings.Split(msg.Topic(), "/")
 		name := parts[len(parts)-1]
-		fmt.Printf("name: %+v\n", name)
-		fmt.Printf("type: %+v\n", Measurements[name])
-
-		//		metrics.temperature.Set(32.0)
-		metrics.temperature.Set(32.0)
-		metrics.rain.Inc()
+		/*
+			fmt.Printf("name: %+v\n", name)
+			fmt.Printf("type: %+v\n", Measurements[name])
+		*/
+		switch name {
+		case "battery_ok":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for temperature_C: %s", err)
+				return
+			}
+			metrics.battery.Set(float)
+		case "temperature_C":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for temperature_C: %s", err)
+				return
+			}
+			metrics.temperature.Set(float)
+		case "humidity":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for temperature_C: %s", err)
+				return
+			}
+			metrics.humidity.Set(float)
+		case "wind_dir_deg":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for temperature_C: %s", err)
+				return
+			}
+			metrics.windDirection.Set(float)
+		case "wind_avg_km_h":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for wind_avg_km_h: %s", err)
+				return
+			}
+			metrics.windAvg.Set(float)
+		case "wind_max_km_h":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for wind_max_km_h: %s", err)
+				return
+			}
+			metrics.windMax.Set(float)
+		case "rain_mm":
+			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
+			if err != nil {
+				fmt.Printf("error: unable to parse float for rain_mm: %s", err)
+				return
+			}
+			metrics.rain.Add(float)
+		}
 	}
 }
 

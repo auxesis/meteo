@@ -1,10 +1,10 @@
 package main
 
 import (
-	//"math/big"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/eclipse/paho.mqtt.golang"
@@ -56,7 +56,13 @@ func TestMeasurementReader(t *testing.T) {
 		msg      TestMsg
 		expected string
 	}{
-		{TestMsg{TopicString: "", PayloadBytes: []byte{}}, "outdoor_temperature_celsius 32"},
+		{TestMsg{TopicString: "battery_ok", PayloadBytes: []byte(strconv.Itoa(1))}, "outdoor_battery 1"},
+		{TestMsg{TopicString: "temperature_C", PayloadBytes: []byte(strconv.FormatFloat(18.3, 'f', -1, 64))}, "outdoor_temperature_celsius 18.3"},
+		{TestMsg{TopicString: "humidity", PayloadBytes: []byte(strconv.FormatFloat(47, 'f', -1, 64))}, "outdoor_humidity_percentage 47"},
+		{TestMsg{TopicString: "wind_dir_deg", PayloadBytes: []byte(strconv.FormatFloat(170, 'f', -1, 64))}, "outdoor_wind_direction_degree 170"},
+		{TestMsg{TopicString: "wind_avg_km_h", PayloadBytes: []byte(strconv.FormatFloat(20, 'f', -1, 64))}, "outdoor_wind_speed_average_kilometers_per_hour 20"},
+		{TestMsg{TopicString: "wind_max_km_h", PayloadBytes: []byte(strconv.FormatFloat(45, 'f', -1, 64))}, "outdoor_wind_speed_average_max_kilometers_per_hour 45"},
+		{TestMsg{TopicString: "rain_mm", PayloadBytes: []byte(strconv.FormatFloat(3.5, 'f', -1, 64))}, "outdoor_rain_millimetres 3.5"},
 	}
 
 	for _, tc := range testCases {
