@@ -20,7 +20,7 @@ type Metrics struct {
 	windDirection prometheus.Gauge
 	windAvg       prometheus.Gauge
 	windMax       prometheus.Gauge
-	rain          prometheus.Counter
+	rain          prometheus.Gauge
 }
 
 // NewMetrics registers new metrics to export
@@ -50,9 +50,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "outdoor_wind_speed_average_max_kilometers_per_hour",
 			Help: "Max wind speed in kilometers per hour.",
 		}),
-		rain: prometheus.NewCounter(prometheus.CounterOpts{
+		rain: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "outdoor_rain_millimetres",
-			Help: "Rainfall",
+			Help: "Rainfall in millimeters",
 		}),
 	}
 	reg.MustRegister(m.battery)
@@ -159,7 +159,7 @@ func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 				fmt.Printf("error: unable to parse float for rain_mm: %s", err)
 				return
 			}
-			metrics.rain.Add(float)
+			metrics.rain.Set(float)
 		}
 	}
 }
