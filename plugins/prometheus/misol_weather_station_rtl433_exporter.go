@@ -165,6 +165,11 @@ func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 }
 
 func main() {
+	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
+	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
+	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
+	//mqtt.DEBUG = log.New(os.Stdout, "[DEBUG] ", 0)
+
 	// Create a non-global registry.
 	reg := prometheus.NewRegistry()
 
