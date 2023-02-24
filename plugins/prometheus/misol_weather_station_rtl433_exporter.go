@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,8 +70,22 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 
 func readMeasurementLoop(metrics *Metrics) {
 	opts := mqtt.NewClientOptions()
-	opts.SetClientID("misol_weather_station_rtl433_exporter")
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	pid := os.Getpid()
+
+	clientID := fmt.Sprintf("misol_weather_station_rtl433_exporter-%s-%d", hostname, pid)
+	fmt.Printf("Connecting with ClientID: %s\n", clientID)
+	opts.SetClientID(clientID)
 	opts.AddBroker("tcp://localhost:1883")
+	opts.SetPingTimeout(1 * time.Second)
+	opts.SetKeepAlive(60 * time.Second)
+	opts.SetOrderMatters(false)
+	opts.SetAutoReconnect(true)
+	opts.SetConnectRetry(true)
+
 	client := mqtt.NewClient(opts)
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
@@ -79,8 +95,10 @@ func readMeasurementLoop(metrics *Metrics) {
 	readMeasurement := measurementReader(metrics)
 
 	topic := "sensors/rtl_433/#"
-	token := client.Subscribe(topic, 1, readMeasurement)
-	token.Wait()
+	if token := client.Subscribe(topic, 1, readMeasurement); token.Wait() && token.Error() != nil {
+		fmt.Printf("error: %s", token.Error())
+		os.Exit(1)
+	}
 	fmt.Printf("Subscribed to topic: %s\n", topic)
 }
 
