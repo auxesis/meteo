@@ -47,8 +47,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Help: "Average wind speed in kilometers per hour.",
 		}),
 		windMax: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "outdoor_wind_speed_average_max_kilometers_per_hour",
-			Help: "Max wind speed in kilometers per hour.",
+			Name: "outdoor_wind_speed_burst_kilometers_per_hour",
+			Help: "Max burst wind speed in kilometers per hour.",
 		}),
 		rain: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "outdoor_rain_millimetres",
