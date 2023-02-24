@@ -100,16 +100,9 @@ var Measurements = map[string]string{
 
 func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 	return func(c mqtt.Client, msg mqtt.Message) {
-		/*
-			fmt.Printf("message: %+v\n", msg)
-			fmt.Printf("topic: %s\npayload: %s\n", msg.Topic(), msg.Payload())
-		*/
 		parts := strings.Split(msg.Topic(), "/")
 		name := parts[len(parts)-1]
-		/*
-			fmt.Printf("name: %+v\n", name)
-			fmt.Printf("type: %+v\n", Measurements[name])
-		*/
+		fmt.Printf("topic: %s, payload: %s\n", msg.Topic(), msg.Payload())
 		switch name {
 		case "battery_ok":
 			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
