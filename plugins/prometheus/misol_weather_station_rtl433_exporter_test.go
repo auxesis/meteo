@@ -75,7 +75,6 @@ func TestMeasurementReader(t *testing.T) {
 			body, err := io.ReadAll(resp.Body)
 			assert.NoError(err)
 
-			//t.Logf("body: %+v\n", string(body))
 			assert.Contains(string(body), tc.expected)
 		})
 	}
