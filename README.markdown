@@ -6,6 +6,7 @@ Ensure you have asdf installed, then run:
 
 ```
 ASDF_PYAPP_INCLUDE_DEPS=1 asdf plugin add ansible https://github.com/amrox/asdf-pyapp.git
+asdf install
 ```
 
 ## 1. Set up the target hosts
