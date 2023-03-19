@@ -3,7 +3,7 @@
 all: build
 
 build:
-	ansible-playbook --inventory=hosts ansible/bootstrap-meteo.yaml
+	ansible-playbook --inventory=hosts ansible/bootstrap-graphs.yaml
 
 #
 # For local development
