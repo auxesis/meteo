@@ -12,7 +12,6 @@ utility_packages:
  - rsync
  - telnet
  - nmap
- - python-pip
  - strace
  - sysstat
  - ntp
