@@ -1,0 +1,22 @@
+- name: Install prometheus packages
+  apt: name="prometheus"
+
+# Config
+- name: Copy /etc/prometheus/prometheus.yml
+  synchronize: src=prometheus.yml dest=/etc/prometheus/prometheus.yml archive=no checksum=yes
+  register: prometheus_yml
+
+- name: Copy /etc/default/prometheus
+  synchronize: src=etc_default_prometheus dest=/etc/default/prometheus archive=no checksum=yes
+  register: etc_default_prometheus
+
+# Service
+- name: Start prometheus on boot
+  service: name=prometheus enabled=yes
+
+- name: Restart prometheus if config has changed
+  service: name=prometheus state=restarted
+  when: etc_default_prometheus.changed or prometheus_yml.changed
+
+- name: Ensure prometheus is running
+  service: name=prometheus state=started
