@@ -1,0 +1,28 @@
+# Config
+- name: Copy default site
+  synchronize: src=default dest=/etc/nginx/sites-available/default archive=no checksum=yes
+  register: nginx_default_site
+
+- name: Enable default site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    owner: root
+    group: root
+    state: link
+  register: nginx_enable_default_site
+
+- name: Copy htpasswd
+  synchronize: src=htpasswd dest=/etc/nginx/htpasswd archive=no checksum=yes
+  register: nginx_htpasswd
+
+# Service
+- name: Start nginx on boot
+  service: name=nginx enabled=yes
+
+- name: Restart nginx if config has changed
+  service: name=nginx state=restarted
+  when: nginx_enable_default_site.changed or nginx_default_site.changed or nginx_htpasswd.changed
+
+- name: Ensure nginx is running
+  service: name=nginx state=started

@@ -1,0 +1,13 @@
+- name: Install certbot packages
+  apt: name="{{ certbot_packages }}"
+
+- name: Allow nginx full
+  community.general.ufw:
+    rule: allow
+    name: Nginx Full
+
+- name: Delete nginx HTTP
+  community.general.ufw:
+    rule: allow
+    name: Nginx HTTP
+    delete: true
