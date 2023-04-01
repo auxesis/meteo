@@ -30,12 +30,14 @@ server {
 		try_files $uri $uri/ =404;
 	}
 
+	# Proxy Prometheus
 	location /prometheus {
 		auth_basic "nope";
 		auth_basic_user_file /etc/nginx/htpasswd;
 		proxy_pass http://localhost:9090/prometheus;
 	}
 
+	# Proxy Grafana
 	location /grafana/ {
 		rewrite  ^/grafana/(.*)  /$1 break;
 		proxy_set_header Host $http_host;
