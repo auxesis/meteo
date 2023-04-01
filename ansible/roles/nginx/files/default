@@ -46,6 +46,7 @@ server {
 	server_name _;
 
 	location / {
+		auth_basic "nope";
 		auth_basic_user_file /etc/nginx/htpasswd;
 		# First attempt to serve request as file, then
 		# as directory, then fall back to displaying a 404.
@@ -53,6 +54,8 @@ server {
 	}
 
 	location /prometheus {
+		auth_basic "nope";
+		auth_basic_user_file /etc/nginx/htpasswd;
 		proxy_pass http://localhost:9090/prometheus;
 	}
 }
