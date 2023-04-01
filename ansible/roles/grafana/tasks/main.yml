@@ -1,0 +1,30 @@
+- name: Install Grafana dependencies
+  apt: name="{{ grafana_dependencies }}"
+
+- name: Install Grafana package
+  apt:
+    deb: https://dl.grafana.com/oss/release/grafana_9.4.7_amd64.deb
+
+# Config
+- name: Copy grafana.ini
+  synchronize: src=grafana.ini dest=/etc/grafana/grafana.ini archive=no checksum=yes
+  register: grafana_config
+
+- name: Set grafana.ini permissions
+  ansible.builtin.file:
+    path: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: '0640'
+  register: grafana_config_permissions
+
+# Service
+- name: Start Grafana on boot
+  service: name=grafana-server enabled=yes
+
+- name: Restart Grafana if config has changed
+  service: name=grafana-server state=restarted
+  when: grafana_config.changed or grafana_config_permissions.changed
+
+- name: Ensure Grafana is running
+  service: name=grafana-server state=started

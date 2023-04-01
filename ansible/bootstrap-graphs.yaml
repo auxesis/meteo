@@ -14,3 +14,4 @@
     - common
     - nginx
     - prometheus
+    - grafana
