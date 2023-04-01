@@ -16,6 +16,9 @@
   synchronize: src=htpasswd dest=/etc/nginx/htpasswd archive=no checksum=yes
   register: nginx_htpasswd
 
+- name: Copy landing page
+  synchronize: src=index.html dest=/var/www/html/index.html archive=no checksum=yes
+
 # Service
 - name: Start nginx on boot
   service: name=nginx enabled=yes
