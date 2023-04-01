@@ -12,6 +12,6 @@
         upgrade: yes
   roles:
     - common
-    - nginx
     - prometheus
     - grafana
+    - nginx
