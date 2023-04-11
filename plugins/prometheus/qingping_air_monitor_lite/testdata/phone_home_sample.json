@@ -1,0 +1,12 @@
+{
+	"id":	4571,
+	"type":	"13",
+	"wifi_info":	"MI\\u0020WIFI\\u0020SU\\u0020WIFI,-29,7,DC:2C:6E:29:80:8E",
+	"sw_version":	"4.3.4",
+	"module_version":	"4.3.4",
+	"mcu_version":	"4.3.3",
+	"wifi_mac":	"04CF8C28CEB7",
+	"hk_salt":	"B5571443B9F24A97682EB4F9BD16587A",
+	"timestamp":	1681190828,
+	"timezone":	100
+}
