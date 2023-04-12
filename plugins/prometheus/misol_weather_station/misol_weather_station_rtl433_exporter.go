@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -68,7 +69,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func readMeasurementLoop(metrics *Metrics) {
+func readMeasurementLoop(metrics *Metrics, host string, port int) {
 	opts := mqtt.NewClientOptions()
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -79,7 +80,7 @@ func readMeasurementLoop(metrics *Metrics) {
 	clientID := fmt.Sprintf("misol_weather_station_rtl433_exporter-%s-%d", hostname, pid)
 	fmt.Printf("Connecting with ClientID: %s\n", clientID)
 	opts.SetClientID(clientID)
-	opts.AddBroker("tcp://localhost:1883")
+	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", host, port))
 	opts.SetPingTimeout(1 * time.Second)
 	opts.SetKeepAlive(60 * time.Second)
 	opts.SetOrderMatters(false)
@@ -175,7 +176,21 @@ func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 	}
 }
 
+var (
+	host  string
+	port  int
+	debug bool
+)
+
+func init() {
+	flag.StringVar(&host, "h", "[::1]", "hostname/address of MQTT broker")
+	flag.IntVar(&port, "p", 1883, "tcp port of MQTT broker")
+	flag.BoolVar(&debug, "d", false, "turn on debug output")
+}
+
 func main() {
+	flag.Parse()
+
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
 	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
@@ -188,7 +203,7 @@ func main() {
 	metrics := NewMetrics(reg)
 
 	// Read measurements via MQTT, update metrics
-	go readMeasurementLoop(metrics)
+	go readMeasurementLoop(metrics, host, port)
 
 	// Expose metrics and custom registry via an HTTP server
 	// using the HandleFor function. "/metrics" is the usual endpoint for that.
