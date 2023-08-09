@@ -52,6 +52,7 @@ scrape_configs:
       'match[]':
         - '{job="prometheus"}'
         - '{__name__=~"job:.*"}'
+        - '{job="mktxp"}'
 
     static_configs:
       - targets: ["119.18.15.232:9090"]
