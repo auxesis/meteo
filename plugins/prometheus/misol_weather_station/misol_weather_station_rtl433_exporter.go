@@ -69,6 +69,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
+// readMeasurementLoop sets up a mqtt client, reads measurements from a topic, and updates exported metrics
 func readMeasurementLoop(metrics *Metrics, host string, port int) {
 	opts := mqtt.NewClientOptions()
 	hostname, err := os.Hostname()
@@ -117,6 +118,7 @@ var Measurements = map[string]string{
 	"rain_mm":       "decimal", // 70.200
 }
 
+// measurementReader returns a function to be used as a callback when messages are received in client.Subscribe
 func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 	return func(c mqtt.Client, msg mqtt.Message) {
 		parts := strings.Split(msg.Topic(), "/")
