@@ -125,6 +125,7 @@ func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration
 		select {
 		case now := <-ticker.C:
 			if now.Sub(last) > ttl {
+				fmt.Println("error: TTL expired on last measurement - setting all measurements to NaN")
 				metrics.battery.Set(NaN)
 				metrics.temperature.Set(NaN)
 				metrics.humidity.Set(NaN)
