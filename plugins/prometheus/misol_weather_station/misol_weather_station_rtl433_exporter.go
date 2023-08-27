@@ -92,7 +92,8 @@ func readMeasurementLoop(metrics *Metrics, host string, port int, ttl time.Durat
 	// Set up the TTL checker early, in case MQTT is unavailable
 	refresh := make(chan time.Time)
 	readMeasurement := measurementReader(metrics, refresh)
-	go nilIfTTLExpired(metrics, refresh, ttl)
+	exit := ttl * 10
+	go nilIfTTLExpired(metrics, refresh, ttl, exit)
 
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
@@ -133,6 +134,10 @@ func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration
 				metrics.windAvg.Set(NaN)
 				metrics.windMax.Set(NaN)
 				metrics.rain.Set(NaN)
+			}
+			if now.Sub(last) > exit {
+				fmt.Printf("error: no updates for %s - exiting\n", exit)
+				os.Exit(2)
 			}
 		}
 	}

@@ -102,8 +102,9 @@ func TestTTLExpiry(t *testing.T) {
 
 	// setup the TTL checker
 	refresh := make(chan time.Time, 1000)
-	ttl := time.Nanosecond
-	go nilIfTTLExpired(metrics, refresh, ttl)
+	ttl := time.Nanosecond * 2
+	exit := time.Second * 10
+	go nilIfTTLExpired(metrics, refresh, ttl, exit)
 
 	// wait
 	time.Sleep(time.Millisecond * 1200)
