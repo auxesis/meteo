@@ -108,8 +108,17 @@ func readMeasurementLoop(metrics *Metrics, host string, port int, ttl time.Durat
 	fmt.Printf("Subscribed to topic: %s\n", topic)
 }
 
+func rateLimitedPrintln(s string, d time.Duration) {
+	last := rateLimitedPrintlnTable[s]
+	now := time.Now()
+	if now.Sub(last) > d {
+		fmt.Println(s)
+		rateLimitedPrintlnTable[s] = now
+	}
+}
+
 // nilIfTTLExpired nils out a metric if an update isn't received within a timeout
-func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration) {
+func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration, exit time.Duration) {
 	NaN := math.Log(-1.0)
 	last := time.Now()
 
@@ -126,7 +135,7 @@ func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration
 		select {
 		case now := <-ticker.C:
 			if now.Sub(last) > ttl {
-				fmt.Println("error: TTL expired on last measurement - setting all measurements to NaN")
+				rateLimitedPrintln("error: TTL expired on last measurement - setting all measurements to NaN", 30*time.Second)
 				metrics.battery.Set(NaN)
 				metrics.temperature.Set(NaN)
 				metrics.humidity.Set(NaN)
@@ -219,10 +228,11 @@ func measurementReader(metrics *Metrics, refresh chan time.Time) func(mqtt.Clien
 }
 
 var (
-	host  string
-	port  int
-	debug bool
-	ttl   time.Duration
+	host                    string
+	port                    int
+	debug                   bool
+	ttl                     time.Duration
+	rateLimitedPrintlnTable map[string]time.Time
 )
 
 func init() {
@@ -230,6 +240,7 @@ func init() {
 	flag.IntVar(&port, "p", 1883, "tcp port of MQTT broker")
 	flag.BoolVar(&debug, "d", false, "turn on debug output")
 	flag.DurationVar(&ttl, "t", 10*time.Minute, "how long to wait for updates before returning NaNs")
+	rateLimitedPrintlnTable = make(map[string]time.Time)
 }
 
 func main() {
