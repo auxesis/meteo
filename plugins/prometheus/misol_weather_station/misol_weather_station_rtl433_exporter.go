@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -70,7 +71,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 }
 
 // readMeasurementLoop sets up a mqtt client, reads measurements from a topic, and updates exported metrics
-func readMeasurementLoop(metrics *Metrics, host string, port int) {
+func readMeasurementLoop(metrics *Metrics, host string, port int, ttl time.Duration) {
 	opts := mqtt.NewClientOptions()
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -88,13 +89,15 @@ func readMeasurementLoop(metrics *Metrics, host string, port int) {
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 
-	client := mqtt.NewClient(opts)
+	// Set up the TTL checker early, in case MQTT is unavailable
+	refresh := make(chan time.Time)
+	readMeasurement := measurementReader(metrics, refresh)
+	go nilIfTTLExpired(metrics, refresh, ttl)
 
+	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
-
-	readMeasurement := measurementReader(metrics)
 
 	topic := "sensors/rtl_433/#"
 	if token := client.Subscribe(topic, 1, readMeasurement); token.Wait() && token.Error() != nil {
@@ -102,6 +105,36 @@ func readMeasurementLoop(metrics *Metrics, host string, port int) {
 		os.Exit(1)
 	}
 	fmt.Printf("Subscribed to topic: %s\n", topic)
+}
+
+// nilIfTTLExpired nils out a metric if an update isn't received within a timeout
+func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration) {
+	NaN := math.Log(-1.0)
+	last := time.Now()
+
+	// read for updates
+	go func() {
+		for t := range refresh {
+			last = t
+		}
+	}()
+
+	// check if the TTL has expired
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case now := <-ticker.C:
+			if now.Sub(last) > ttl {
+				metrics.battery.Set(NaN)
+				metrics.temperature.Set(NaN)
+				metrics.humidity.Set(NaN)
+				metrics.windDirection.Set(NaN)
+				metrics.windAvg.Set(NaN)
+				metrics.windMax.Set(NaN)
+				metrics.rain.Set(NaN)
+			}
+		}
+	}
 }
 
 // Measurements tracks the types of measurements we receive
@@ -119,11 +152,12 @@ var Measurements = map[string]string{
 }
 
 // measurementReader returns a function to be used as a callback when messages are received in client.Subscribe
-func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
+func measurementReader(metrics *Metrics, refresh chan time.Time) func(mqtt.Client, mqtt.Message) {
 	return func(c mqtt.Client, msg mqtt.Message) {
 		parts := strings.Split(msg.Topic(), "/")
 		name := parts[len(parts)-1]
 		fmt.Printf("topic: %s, payload: %s\n", msg.Topic(), msg.Payload())
+		refresh <- time.Now()
 		switch name {
 		case "battery_ok":
 			float, err := strconv.ParseFloat(string(msg.Payload()), 64)
@@ -182,12 +216,14 @@ var (
 	host  string
 	port  int
 	debug bool
+	ttl   time.Duration
 )
 
 func init() {
 	flag.StringVar(&host, "h", "[::1]", "hostname/address of MQTT broker")
 	flag.IntVar(&port, "p", 1883, "tcp port of MQTT broker")
 	flag.BoolVar(&debug, "d", false, "turn on debug output")
+	flag.DurationVar(&ttl, "t", 10*time.Minute, "how long to wait for updates before returning NaNs")
 }
 
 func main() {
@@ -205,7 +241,7 @@ func main() {
 	metrics := NewMetrics(reg)
 
 	// Read measurements via MQTT, update metrics
-	go readMeasurementLoop(metrics, host, port)
+	go readMeasurementLoop(metrics, host, port, ttl)
 
 	// Expose metrics and custom registry via an HTTP server
 	// using the HandleFor function. "/metrics" is the usual endpoint for that.
