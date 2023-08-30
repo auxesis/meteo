@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/prometheus/client_golang/prometheus"
@@ -56,8 +57,9 @@ func TestMeasurementReader(t *testing.T) {
 	metrics := NewMetrics(reg)
 	ts := httptest.NewServer(promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
 	defer ts.Close()
+	refresh := make(chan time.Time, 1000)
 
-	readMeasurement := measurementReader(metrics)
+	readMeasurement := measurementReader(metrics, refresh)
 	c := mqtt.NewClient(mqtt.NewClientOptions())
 
 	testCases := []struct {
@@ -85,4 +87,38 @@ func TestMeasurementReader(t *testing.T) {
 		})
 	}
 
+}
+
+func TestTTLExpiry(t *testing.T) {
+	assert := assert.New(t)
+
+	// setup
+	reg := prometheus.NewRegistry()
+	metrics := NewMetrics(reg)
+	ts := httptest.NewServer(promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+	defer ts.Close()
+
+	// get the latest metrics
+	resp, err := http.Get(ts.URL)
+	assert.NoError(err)
+
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(err)
+	assert.Contains(string(body), "upstairs_temperature_celsius 0")
+
+	// setup the TTL checker
+	refresh := make(chan time.Time, 1000)
+	ttl := time.Nanosecond * 2
+	exit := time.Second * 10
+	go nilIfTTLExpired(metrics, refresh, ttl, exit)
+
+	// wait
+	time.Sleep(time.Millisecond * 1200)
+
+	// then check the TTL has expired
+	resp, err = http.Get(ts.URL)
+	assert.NoError(err)
+	body, err = io.ReadAll(resp.Body)
+	assert.NoError(err)
+	assert.Contains(string(body), "upstairs_temperature_celsius NaN")
 }

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -56,7 +57,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func readMeasurementLoop(metrics *Metrics, host string, port int, mac string) {
+func readMeasurementLoop(metrics *Metrics, host string, port int, mac string, ttl time.Duration) {
 	opts := mqtt.NewClientOptions()
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -74,13 +75,17 @@ func readMeasurementLoop(metrics *Metrics, host string, port int, mac string) {
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 
-	client := mqtt.NewClient(opts)
+	// Set up the TTL checker early, in case MQTT is unavailable
+	refresh := make(chan time.Time)
+	readMeasurement := measurementReader(metrics, refresh)
+	exit := ttl * 10
+	go nilIfTTLExpired(metrics, refresh, ttl, exit)
 
+	// Set up the client
+	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
-
-	readMeasurement := measurementReader(metrics)
 
 	topic := fmt.Sprintf("/+/%s/#", mac)
 	if token := client.Subscribe(topic, 1, readMeasurement); token.Wait() && token.Error() != nil {
@@ -118,7 +123,7 @@ type QingpingFloatValue struct {
 	Value float64 `json:"value"`
 }
 
-func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
+func measurementReader(metrics *Metrics, refresh chan time.Time) func(mqtt.Client, mqtt.Message) {
 	return func(c mqtt.Client, msg mqtt.Message) {
 		if debug {
 			fmt.Printf("topic: %s, payload: %s\n", msg.Topic(), msg.Payload())
@@ -136,6 +141,7 @@ func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 			return
 		}
 		log.Printf("got sensorData")
+		refresh <- time.Now()
 
 		if len(qmsg.SensorData) > 1 {
 			log.Printf("warning: multiple sensorData received: expected 1, got %d", len(qmsg.SensorData))
@@ -149,11 +155,53 @@ func measurementReader(metrics *Metrics) func(mqtt.Client, mqtt.Message) {
 	}
 }
 
+func rateLimitedPrintln(s string, d time.Duration) {
+	last := rateLimitedPrintlnTable[s]
+	now := time.Now()
+	if now.Sub(last) > d {
+		fmt.Println(s)
+		rateLimitedPrintlnTable[s] = now
+	}
+}
+
+// nilIfTTLExpired nils out a metric if an update isn't received within a timeout
+func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration, exit time.Duration) {
+	NaN := math.Log(-1.0)
+	last := time.Now()
+
+	// read for updates
+	go func() {
+		for t := range refresh {
+			last = t
+		}
+	}()
+
+	// check if the TTL has expired
+	ticker := time.NewTicker(time.Second)
+	for {
+		now := <-ticker.C
+		if now.Sub(last) > ttl {
+			rateLimitedPrintln("error: TTL expired on last measurement - setting all measurements to NaN", 30*time.Second)
+			metrics.temperature.Set(NaN)
+			metrics.humidity.Set(NaN)
+			metrics.co2.Set(NaN)
+			metrics.pm25.Set(NaN)
+			metrics.pm10.Set(NaN)
+		}
+		if now.Sub(last) > exit {
+			fmt.Printf("error: no updates for %s - exiting\n", exit)
+			os.Exit(2)
+		}
+	}
+}
+
 var (
-	host  string
-	port  int
-	mac   string
-	debug bool
+	host                    string
+	port                    int
+	mac                     string
+	debug                   bool
+	ttl                     time.Duration
+	rateLimitedPrintlnTable map[string]time.Time
 )
 
 func init() {
@@ -161,6 +209,7 @@ func init() {
 	flag.IntVar(&port, "p", 1883, "tcp port of MQTT broker")
 	flag.StringVar(&mac, "m", "", "MAC address of Qingping device")
 	flag.BoolVar(&debug, "d", false, "turn on debug output")
+	rateLimitedPrintlnTable = make(map[string]time.Time)
 }
 
 func main() {
@@ -178,7 +227,7 @@ func main() {
 	metrics := NewMetrics(reg)
 
 	// Read measurements via MQTT, update metrics
-	go readMeasurementLoop(metrics, host, port, mac)
+	go readMeasurementLoop(metrics, host, port, mac, ttl)
 
 	// Expose metrics and custom registry via an HTTP server
 	// using the HandleFor function. "/metrics" is the usual endpoint for that.
