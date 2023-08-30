@@ -132,22 +132,20 @@ func nilIfTTLExpired(metrics *Metrics, refresh chan time.Time, ttl time.Duration
 	// check if the TTL has expired
 	ticker := time.NewTicker(time.Second)
 	for {
-		select {
-		case now := <-ticker.C:
-			if now.Sub(last) > ttl {
-				rateLimitedPrintln("error: TTL expired on last measurement - setting all measurements to NaN", 30*time.Second)
-				metrics.battery.Set(NaN)
-				metrics.temperature.Set(NaN)
-				metrics.humidity.Set(NaN)
-				metrics.windDirection.Set(NaN)
-				metrics.windAvg.Set(NaN)
-				metrics.windMax.Set(NaN)
-				metrics.rain.Set(NaN)
-			}
-			if now.Sub(last) > exit {
-				fmt.Printf("error: no updates for %s - exiting\n", exit)
-				os.Exit(2)
-			}
+		now := <-ticker.C
+		if now.Sub(last) > ttl {
+			rateLimitedPrintln("error: TTL expired on last measurement - setting all measurements to NaN", 30*time.Second)
+			metrics.battery.Set(NaN)
+			metrics.temperature.Set(NaN)
+			metrics.humidity.Set(NaN)
+			metrics.windDirection.Set(NaN)
+			metrics.windAvg.Set(NaN)
+			metrics.windMax.Set(NaN)
+			metrics.rain.Set(NaN)
+		}
+		if now.Sub(last) > exit {
+			fmt.Printf("error: no updates for %s - exiting\n", exit)
+			os.Exit(2)
 		}
 	}
 }

@@ -38,7 +38,6 @@ func (tm TestMsg) Payload() []byte {
 	return tm.PayloadBytes
 }
 func (tm TestMsg) Ack() {
-	return
 }
 
 func TestMeasurementReader(t *testing.T) {
