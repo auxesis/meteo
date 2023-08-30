@@ -209,6 +209,7 @@ func init() {
 	flag.IntVar(&port, "p", 1883, "tcp port of MQTT broker")
 	flag.StringVar(&mac, "m", "", "MAC address of Qingping device")
 	flag.BoolVar(&debug, "d", false, "turn on debug output")
+	flag.DurationVar(&ttl, "t", 10*time.Minute, "how long to wait for updates before returning NaNs")
 	rateLimitedPrintlnTable = make(map[string]time.Time)
 }
 
