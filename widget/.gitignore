@@ -1,0 +1,9 @@
+# dev tools
+node_modules/
+
+# local config
+config.toml
+
+# build artifacts
+*-linux-arm5
+*-macos-amd64

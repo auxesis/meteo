@@ -1,0 +1,11 @@
+id = "sydney"
+name = "Sydney Weather"
+description = "Weather measurements for Sydney, NSW, 2000"
+token = "s3cr3t"
+
+[data]
+content_url = "https://hello.world.example/"
+temperature = "25.7°"
+humidity    = "65%"
+wind_gust   = "2.45 km/h"
+rainfall    = "300µm"
