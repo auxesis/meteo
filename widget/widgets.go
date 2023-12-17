@@ -13,12 +13,22 @@ import (
 
 // Widget is a container for a widget.json-formatted response, suitable for WCS
 type Widget struct {
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	Data        map[string]string       `json:"data"`
-	Layouts     map[string]WidgetLayout `json:"layouts"`
-	ID          string                  `json:"-"`
-	Token       string                  `json:"-"`
+	Name          string                  `json:"name"`
+	Description   string                  `json:"description"`
+	Data          map[string]string       `json:"data"`
+	Layouts       map[string]WidgetLayout `json:"layouts"`
+	ID            string                  `json:"-"`
+	Token         string                  `json:"-"`
+	Metrics       map[string]MetricConfig `json:"-"`
+	WidgetURL     string                  `json:"-" toml:"widget_url"`
+	PrometheusURL string                  `json:"-" toml:"prometheus_url"`
+}
+
+// MetricConfig defines how to gather and display a metric as data
+type MetricConfig struct {
+	DisplayUnit     string `toml:"display_unit"`
+	PrometheusQuery string `toml:"prometheus_query"`
+	Levels          map[string]int
 }
 
 // WidgetLayout is a layout for a widget.json widget
@@ -52,7 +62,7 @@ type WidgetRow struct {
 // WidgetCell is a cell for layer row for a widget.json widget
 type WidgetCell struct {
 	Width                int        `json:"width"`
-	BackgroundColorStyle string     `json:"background_color_style,omitempty",toml:"background_color_style"`
+	BackgroundColorStyle string     `json:"background_color_style,omitempty" toml:"background_color_style"`
 	Padding              float64    `json:"padding,omitempty"`
 	Text                 WidgetText `json:"text,omitempty"`
 	LinkURL              string     `json:"link_url,omitempty"`
@@ -70,8 +80,11 @@ type WidgetText struct {
 	MinScaleFactor float64 `json:"min_scale_factor,omitempty"`
 }
 
+// Samples is a map of the latest Prometheus samples
+type Samples map[string]float64
+
 // handleWidgetQuery handles rendering a widget in the WCS widget.json format
-func handleWidgetQuery(ws []Widget) func(w http.ResponseWriter, r *http.Request) {
+func handleWidgetQuery(wdgts []Widget, samples *Samples) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("request: %s", r.URL)
 		w.Header().Add("Content-Type", "application/json")
@@ -89,7 +102,7 @@ func handleWidgetQuery(ws []Widget) func(w http.ResponseWriter, r *http.Request)
 		t := q.Get("token")
 
 		var widget Widget
-		for _, wi := range ws {
+		for _, wi := range wdgts {
 			if wi.ID == id && wi.Token == t {
 				widget = wi
 				break
@@ -100,11 +113,20 @@ func handleWidgetQuery(ws []Widget) func(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		widget = addDataFromSamples(widget, samples)
 		err := json.NewEncoder(w).Encode(widget)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
+}
+
+// addDataFromSamples populates a widget's data with the latest samples
+func addDataFromSamples(w Widget, s *Samples) Widget {
+	for k, v := range w.Metrics {
+		w.Data[k] = fmt.Sprintf("%f%s", (*s)[k], v.DisplayUnit)
+	}
+	return w
 }
 
 var layouts = map[string]WidgetLayout{
@@ -220,6 +242,7 @@ func loadWidgets(configPath string) (widgets []Widget, err error) {
 		return widgets, err
 	}
 	widget.Layouts = layouts
+	widget.Data = map[string]string{"content_url": widget.WidgetURL}
 	return []Widget{widget}, err
 }
 
@@ -230,7 +253,8 @@ func main() {
 		log.Fatalf("error: %s", err)
 	}
 
-	http.HandleFunc("/", handleWidgetQuery(widgets))
+	var samples Samples
+	http.HandleFunc("/", handleWidgetQuery(widgets, &samples))
 
 	log.Printf("info: starting server on port %d", port)
 	for _, w := range widgets {

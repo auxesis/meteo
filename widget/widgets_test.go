@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +17,8 @@ func TestWidgetsSetsContentType(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://example.com/widgets/hello", nil)
 	var ws []Widget
-	handleWidgetQuery(ws)(w, r)
+	var s Samples
+	handleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 	assert.Equal(res.Header.Get("Content-Type"), "application/json")
 }
@@ -39,7 +42,8 @@ func TestWidgetsLookupByIDAndReturnsNotFound(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", tc.url, nil)
 			ws := []Widget{tc.widget}
-			handleWidgetQuery(ws)(w, r)
+			var s Samples
+			handleWidgetQuery(ws, &s)(w, r)
 			res := w.Result()
 			assert.Equal(tc.status, res.StatusCode)
 		})
@@ -52,7 +56,8 @@ func TestWidgetsHasData(t *testing.T) {
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 	ws, err := loadWidgets("testdata/config.toml")
 	assert.NoError(err)
-	handleWidgetQuery(ws)(w, r)
+	var s Samples
+	handleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -77,7 +82,8 @@ func TestWidgetsHasColours(t *testing.T) {
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 	ws, err := loadWidgets("testdata/config.toml")
 	assert.NoError(err)
-	handleWidgetQuery(ws)(w, r)
+	var s Samples
+	handleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -104,7 +110,8 @@ func TestWidgetsUsesDataRefs(t *testing.T) {
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 	ws, err := loadWidgets("testdata/config.toml")
 	assert.NoError(err)
-	handleWidgetQuery(ws)(w, r)
+	var s Samples
+	handleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -139,3 +146,34 @@ func TestWidgetsUsesDataRefs(t *testing.T) {
 
 	assert.ElementsMatch(dataRefs, data)
 }
+
+func TestWidgetsUsesLatestSamples(t *testing.T) {
+	assert := assert.New(t)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
+	ws, err := loadWidgets("testdata/config.toml")
+	assert.NoError(err)
+	s := Samples{"temperature": 30.2, "humidity": 50, "rainfall": 1.2, "wind_gust": 3.6}
+	handleWidgetQuery(ws, &s)(w, r)
+	res := w.Result()
+
+	body, err := io.ReadAll(res.Body)
+	assert.NoError(err)
+
+	var widget Widget
+	err = json.Unmarshal(body, &widget)
+	assert.NoError(err)
+	assert.NotEmpty(widget.Layouts)
+	assert.Greater(len(widget.Data), 1)
+	assert.NotEmpty(widget.Data["content_url"])
+	for k, v := range widget.Data {
+		if k != "content_url" {
+			vs := regexp.MustCompile(`\d+.?\d+?`).FindString(v)
+			d, err := strconv.ParseFloat(vs, 64)
+			assert.NoError(err)
+			assert.Equal(s[k], d)
+		}
+	}
+}
+
+// func TestWidgetsUsesColorsForThresholds(t *testing.T)

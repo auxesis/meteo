@@ -2,10 +2,23 @@ id = "sydney"
 name = "Sydney Weather"
 description = "Weather measurements for Sydney, NSW, 2000"
 token = "s3cr3t"
+widget_url = "https://hello.world.example/grafana/"
+prometheus_url = "https://hello.world.example/prometheus/"
 
-[data]
-content_url = "https://hello.world.example/"
-temperature = "25.7°"
-humidity    = "65%"
-wind_gust   = "2.45 km/h"
-rainfall    = "300µm"
+[metrics.temperature]
+display_unit = "°"
+prometheus_query = "outdoor_temperature_celsius"
+levels = { "base" = 0, "low" = 18, "medium" = 27, "high" = 33 }
+
+[metrics.humidity]
+display_unit = "%"
+prometheus_query = "outdoor_humidity_percentage"
+levels = { "base" = 0, "low" = 20, "medium" = 80, "high" = 90 }
+
+[metrics.wind_gust]
+display_unit     = " km/h"
+prometheus_query = "delta(outdoor_rain_millimetres[24h])"
+
+[metrics.rainfall]
+display_unit     = "mm"
+prometheus_query = "outdoor_wind_speed_burst_kilometers_per_hour"
