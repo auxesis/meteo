@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/prometheus/client_golang/api"
+	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/shopspring/decimal"
 )
 
@@ -297,11 +303,41 @@ func loadWidgets(configPath string) (widgets []Widget, err error) {
 }
 
 func pollForSamples(wdgts []Widget, samples *Samples) {
-	(*samples)["temperature"] = 37.9
-	(*samples)["humidity"] = 73
-	(*samples)["wind_gust"] = 13.93
-	(*samples)["rainfall"] = 0.03
-	for {
+	w := wdgts[0]
+
+	/*
+		(*samples)["temperature"] = 37.9
+		(*samples)["humidity"] = 73
+		(*samples)["wind_gust"] = 13.93
+		(*samples)["rainfall"] = 0.03
+	*/
+
+	client, err := api.NewClient(api.Config{
+		Address: w.PrometheusURL,
+	})
+	if err != nil {
+		log.Fatalf("error: unable to create Prometheus client: %s", err)
+	}
+	v1api := v1.NewAPI(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for k, v := range w.Metrics {
+		result, warnings, err := v1api.Query(ctx, v.PrometheusQuery, time.Now(), v1.WithTimeout(10*time.Second))
+		if err != nil {
+			log.Printf("error: unable to query Prometheus: %s\n", err)
+			continue
+		}
+		if len(warnings) > 0 {
+			log.Printf("warning: when querying Prometheus: %v\n", warnings)
+		}
+		results := strings.Split(result.String(), " ")
+		v, err := strconv.ParseFloat(results[len(results)-2], 64)
+		if err != nil {
+			log.Printf("error: unable to query Prometheus: %s\n", err)
+			continue
+		}
+		(*samples)[k] = v
 	}
 }
 
