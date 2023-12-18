@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -176,4 +177,80 @@ func TestWidgetsUsesLatestSamples(t *testing.T) {
 	}
 }
 
-// func TestWidgetsUsesColorsForThresholds(t *testing.T)
+func TestFindingColorForValue(t *testing.T) {
+	assert := assert.New(t)
+
+	levels := map[string]int{"base": 0, "low": 10, "medium": 20, "high": 30}
+	var tests = []struct {
+		value  float64
+		levels map[string]int
+		expect string
+	}{
+		{0, levels, "blue-500"},
+		{1, levels, "blue-500"},
+		{10, levels, "green-500"},
+		{11, levels, "green-500"},
+		{20, levels, "yellow-500"},
+		{21, levels, "yellow-500"},
+		{30, levels, "red-500"},
+		{31, levels, "red-500"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%.1f", tc.value), func(t *testing.T) {
+			c := findColorForValue(tc.value, tc.levels)
+			assert.Equal(tc.expect, c)
+		})
+	}
+}
+
+func TestWidgetsUsesColorsForThresholds(t *testing.T) {
+	assert := assert.New(t)
+	ws, err := loadWidgets("testdata/config.toml")
+	assert.NoError(err)
+
+	var tests = []struct {
+		metric string
+		value  float64
+		expect string
+	}{
+		{"temperature", float64(ws[0].Metrics["temperature"].Levels["base"] + 1), "blue-500"},
+		{"temperature", float64(ws[0].Metrics["temperature"].Levels["low"] + 1), "green-500"},
+		{"temperature", float64(ws[0].Metrics["temperature"].Levels["medium"] + 1), "yellow-500"},
+		{"temperature", float64(ws[0].Metrics["temperature"].Levels["high"] + 1), "red-500"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%s/%f/%s", tc.metric, tc.value, tc.expect), func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
+			s := Samples{tc.metric: tc.value, "humidity": 0, "rainfall": 0, "wind_gust": 0}
+			handleWidgetQuery(ws, &s)(w, r)
+			res := w.Result()
+
+			body, err := io.ReadAll(res.Body)
+			assert.NoError(err)
+			var widget Widget
+			err = json.Unmarshal(body, &widget)
+			assert.NoError(err)
+			assert.NotEmpty(widget.Layouts)
+
+			var color string
+			for _, lyts := range widget.Layouts {
+				for _, lyrs := range lyts.Layers {
+					assert.NotEmpty(lyrs)
+					for _, r := range lyrs.Rows {
+						assert.NotEmpty(r)
+						for _, c := range r.Cells {
+							if c.Text.DataRef == tc.metric {
+								color = c.Text.ColorStyle
+							}
+						}
+					}
+				}
+			}
+			assert.NotEmpty(color)
+			assert.Equal(tc.expect, color)
+		})
+	}
+}
