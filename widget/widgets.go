@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/BurntSushi/toml"
+	"github.com/shopspring/decimal"
 )
 
 // Widget is a container for a widget.json-formatted response, suitable for WCS
@@ -124,8 +125,16 @@ func handleWidgetQuery(wdgts []Widget, samples *Samples) func(w http.ResponseWri
 
 // addDataFromSamples populates a widget's data with the latest samples
 func addDataFromSamples(w Widget, s *Samples) Widget {
-	for k, v := range w.Metrics {
-		w.Data[k] = fmt.Sprintf("%f%s", (*s)[k], v.DisplayUnit)
+	for k, c := range w.Metrics {
+		f := (*s)[k]
+		v := decimal.NewFromFloat(f)
+		var vs string
+		if v.Exponent() < -3 {
+			vs = v.String()
+		} else {
+			vs = v.RoundDown(1).String()
+		}
+		w.Data[k] = fmt.Sprintf("%s%s", vs, c.DisplayUnit)
 	}
 	return w
 }
@@ -287,6 +296,15 @@ func loadWidgets(configPath string) (widgets []Widget, err error) {
 	return []Widget{widget}, err
 }
 
+func pollForSamples(wdgts []Widget, samples *Samples) {
+	(*samples)["temperature"] = 37.9
+	(*samples)["humidity"] = 73
+	(*samples)["wind_gust"] = 13.93
+	(*samples)["rainfall"] = 0.03
+	for {
+	}
+}
+
 func main() {
 	flag.Parse()
 	widgets, err := loadWidgets(configPath)
@@ -294,7 +312,8 @@ func main() {
 		log.Fatalf("error: %s", err)
 	}
 
-	var samples Samples
+	samples := Samples{}
+	go pollForSamples(widgets, &samples)
 	http.HandleFunc("/", handleWidgetQuery(widgets, &samples))
 
 	log.Printf("info: starting server on port %d", port)

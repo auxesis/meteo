@@ -204,6 +204,34 @@ func TestFindingColorForValue(t *testing.T) {
 	}
 }
 
+func TestValueFormatting(t *testing.T) {
+	assert := assert.New(t)
+	ws, err := loadWidgets("testdata/config.toml")
+	assert.NoError(err)
+	wdgt := ws[0]
+
+	var tests = []struct {
+		metric string
+		value  float64
+		expect string
+	}{
+		{"temperature", 10.0, "10°"},
+		{"temperature", 10.1, "10.1°"},
+		{"temperature", 10.23, "10.2°"},
+		{"temperature", 10.44, "10.4°"},
+		{"temperature", 10.45, "10.4°"},
+		{"temperature", 10.456, "10.4°"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%s/%.4f", tc.metric, tc.value), func(t *testing.T) {
+			samples := Samples{tc.metric: tc.value}
+			w := addDataFromSamples(wdgt, &samples)
+			assert.Equal(tc.expect, w.Data[tc.metric])
+		})
+	}
+}
+
 func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 	assert := assert.New(t)
 	ws, err := loadWidgets("testdata/config.toml")
