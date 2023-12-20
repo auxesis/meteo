@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/api"
-	"github.com/prometheus/client_golang/api/prometheus/v1"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
 func pollForSamples(wdgts []Widget, samples *Samples) {
@@ -23,7 +23,7 @@ func pollForSamples(wdgts []Widget, samples *Samples) {
 
 	fetchPrometheus(v1api, w, samples) // first tick
 
-	c := time.Tick(30 * time.Second)
+	c := time.Tick(90 * time.Second)
 	for range c {
 		fetchPrometheus(v1api, w, samples)
 	}
