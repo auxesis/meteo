@@ -5,5 +5,4 @@ node_modules/
 config.toml
 
 # build artifacts
-*-linux-arm5
-*-macos-amd64
+weather_widget-*-*
