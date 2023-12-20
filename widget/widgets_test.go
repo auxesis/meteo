@@ -51,6 +51,11 @@ func TestValueFormatting(t *testing.T) {
 		{"temperature", 10.44, "10.4°"},
 		{"temperature", 10.45, "10.4°"},
 		{"temperature", 10.456, "10.4°"},
+		{"rainfall", 38, "38mm"},
+		{"rainfall", 38.4, "38.4mm"},
+		{"rainfall", 38.44, "38.4mm"},
+		{"rainfall", 38.45, "38.4mm"},
+		{"rainfall", 38.404192495368754, "38.4mm"},
 	}
 
 	for _, tc := range tests {

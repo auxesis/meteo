@@ -54,8 +54,9 @@ func addDataFromSamples(w Widget, s *Samples) Widget {
 	for k, c := range w.Metrics {
 		f := (*s)[k]
 		v := decimal.NewFromFloat(f)
+
 		var vs string
-		if v.Exponent() < -3 {
+		if v.Exponent() > -2 {
 			vs = v.String()
 		} else {
 			vs = v.RoundDown(1).String()
