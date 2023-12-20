@@ -53,6 +53,11 @@ server {
 		proxy_set_header Host $http_host;
 		proxy_pass http://grafana;
 	}
+
+	# Proxy Widgets
+	location /widgets {
+		proxy_pass http://localhost:10002;
+	}
 }
 
 # Virtual Host configuration for example.com
