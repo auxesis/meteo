@@ -45,6 +45,10 @@ func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples) {
 		if len(warnings) > 0 {
 			log.Printf("warning: when querying Prometheus: %v\n", warnings)
 		}
+		if len(result.String()) == 0 {
+			log.Printf("warning: no data from Prometheus when scraping %s (%s)\n", k, v.PrometheusQuery)
+			continue
+		}
 		results := strings.Split(result.String(), " ")
 		v, err := strconv.ParseFloat(results[len(results)-2], 64)
 		if err != nil {
