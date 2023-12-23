@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"encoding/json"
@@ -7,11 +7,15 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/auxesis/meteo/widget/internal/widget"
 	"github.com/shopspring/decimal"
 )
 
-// handleWidgetQuery handles rendering a widget in the WCS widget.json format
-func handleWidgetQuery(wdgts []Widget, samples *Samples) func(w http.ResponseWriter, r *http.Request) {
+// Samples is a map of the latest metric samples (currently from Prometheus)
+type Samples map[string]float64
+
+// HandleWidgetQuery handles rendering a widget in the WCS widget.json format
+func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("request: %s", r.URL)
 		w.Header().Add("Content-Type", "application/json")
@@ -28,7 +32,7 @@ func handleWidgetQuery(wdgts []Widget, samples *Samples) func(w http.ResponseWri
 		q := r.URL.Query()
 		t := q.Get("token")
 
-		var widget Widget
+		var widget widget.Widget
 		for _, wi := range wdgts {
 			if wi.ID == id && wi.Token == t {
 				widget = wi
@@ -50,7 +54,7 @@ func handleWidgetQuery(wdgts []Widget, samples *Samples) func(w http.ResponseWri
 }
 
 // addDataFromSamples populates a widget's data with the latest samples
-func addDataFromSamples(w Widget, s *Samples) Widget {
+func addDataFromSamples(w widget.Widget, s *Samples) widget.Widget {
 	for k, c := range w.Metrics {
 		f := (*s)[k]
 		v := decimal.NewFromFloat(f)
@@ -81,7 +85,7 @@ func findColorForValue(v float64, levels map[string]int) string {
 }
 
 // adjustColorsFromThresholds changes a widget's cell colors based on thresholds and samples
-func adjustColorsFromThresholds(w Widget, s *Samples) Widget {
+func adjustColorsFromThresholds(w widget.Widget, s *Samples) widget.Widget {
 	targets := map[string]map[string]int{}
 	for k, v := range w.Metrics {
 		if v.Levels != nil {

@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/auxesis/meteo/widget/internal/widget"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,9 +18,9 @@ func TestWidgetsSetsContentType(t *testing.T) {
 	assert := assert.New(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://example.com/widgets/hello", nil)
-	var ws []Widget
+	var ws []widget.Widget
 	var s Samples
-	handleWidgetQuery(ws, &s)(w, r)
+	HandleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 	assert.Equal(res.Header.Get("Content-Type"), "application/json")
 }
@@ -29,22 +30,22 @@ func TestWidgetsLookupByIDAndReturnsNotFound(t *testing.T) {
 
 	type test struct {
 		url    string
-		widget Widget
+		widget widget.Widget
 		status int
 	}
 	tests := []test{
-		{"http://a.test/widgets/not_found", Widget{}, http.StatusNotFound},
-		{"http://a.test/widgets/unauthorized?token=right", Widget{ID: "unauthorized", Token: "wrong"}, http.StatusNotFound},
-		{"http://a.test/widgets/authorized?token=s3cr3t", Widget{ID: "authorized", Token: "s3cr3t"}, http.StatusOK},
+		{"http://a.test/widgets/not_found", widget.Widget{}, http.StatusNotFound},
+		{"http://a.test/widgets/unauthorized?token=right", widget.Widget{ID: "unauthorized", Token: "wrong"}, http.StatusNotFound},
+		{"http://a.test/widgets/authorized?token=s3cr3t", widget.Widget{ID: "authorized", Token: "s3cr3t"}, http.StatusOK},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.url, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", tc.url, nil)
-			ws := []Widget{tc.widget}
+			ws := []widget.Widget{tc.widget}
 			var s Samples
-			handleWidgetQuery(ws, &s)(w, r)
+			HandleWidgetQuery(ws, &s)(w, r)
 			res := w.Result()
 			assert.Equal(tc.status, res.StatusCode)
 		})
@@ -55,16 +56,16 @@ func TestWidgetsHasData(t *testing.T) {
 	assert := assert.New(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
-	ws, err := loadWidgets("testdata/config.toml")
+	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	handleWidgetQuery(ws, &s)(w, r)
+	HandleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
 	assert.NoError(err)
 
-	var widget Widget
+	var widget widget.Widget
 	err = json.Unmarshal(body, &widget)
 	assert.NoError(err)
 	assert.NotEmpty(widget.Name)
@@ -81,16 +82,16 @@ func TestWidgetsHasColours(t *testing.T) {
 	assert := assert.New(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
-	ws, err := loadWidgets("testdata/config.toml")
+	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	handleWidgetQuery(ws, &s)(w, r)
+	HandleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
 	assert.NoError(err)
 
-	var widget Widget
+	var widget widget.Widget
 	err = json.Unmarshal(body, &widget)
 	assert.NoError(err)
 	assert.NotEmpty(widget.Layouts)
@@ -109,16 +110,16 @@ func TestWidgetsUsesDataRefs(t *testing.T) {
 	assert := assert.New(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
-	ws, err := loadWidgets("testdata/config.toml")
+	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	handleWidgetQuery(ws, &s)(w, r)
+	HandleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
 	assert.NoError(err)
 
-	var widget Widget
+	var widget widget.Widget
 	err = json.Unmarshal(body, &widget)
 	assert.NoError(err)
 	assert.NotEmpty(widget.Layouts)
@@ -152,16 +153,16 @@ func TestWidgetsUsesLatestSamples(t *testing.T) {
 	assert := assert.New(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
-	ws, err := loadWidgets("testdata/config.toml")
+	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	s := Samples{"temperature": 30.2, "humidity": 50, "rainfall": 1.2, "wind_gust": 3.6}
-	handleWidgetQuery(ws, &s)(w, r)
+	HandleWidgetQuery(ws, &s)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
 	assert.NoError(err)
 
-	var widget Widget
+	var widget widget.Widget
 	err = json.Unmarshal(body, &widget)
 	assert.NoError(err)
 	assert.NotEmpty(widget.Layouts)
@@ -179,7 +180,7 @@ func TestWidgetsUsesLatestSamples(t *testing.T) {
 
 func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 	assert := assert.New(t)
-	ws, err := loadWidgets("testdata/config.toml")
+	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 
 	var tests = []struct {
@@ -198,12 +199,12 @@ func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 			s := Samples{tc.metric: tc.value, "humidity": 0, "rainfall": 0, "wind_gust": 0}
-			handleWidgetQuery(ws, &s)(w, r)
+			HandleWidgetQuery(ws, &s)(w, r)
 			res := w.Result()
 
 			body, err := io.ReadAll(res.Body)
 			assert.NoError(err)
-			var widget Widget
+			var widget widget.Widget
 			err = json.Unmarshal(body, &widget)
 			assert.NoError(err)
 			assert.NotEmpty(widget.Layouts)
@@ -224,6 +225,66 @@ func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 			}
 			assert.NotEmpty(color)
 			assert.Equal(tc.expect, color)
+		})
+	}
+}
+
+func TestFindingColorForValue(t *testing.T) {
+	assert := assert.New(t)
+
+	levels := map[string]int{"base": 0, "low": 10, "medium": 20, "high": 30}
+	var tests = []struct {
+		value  float64
+		levels map[string]int
+		expect string
+	}{
+		{0, levels, "blue-500"},
+		{1, levels, "blue-500"},
+		{10, levels, "green-500"},
+		{11, levels, "green-500"},
+		{20, levels, "yellow-500"},
+		{21, levels, "yellow-500"},
+		{30, levels, "red-500"},
+		{31, levels, "red-500"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%.1f", tc.value), func(t *testing.T) {
+			c := findColorForValue(tc.value, tc.levels)
+			assert.Equal(tc.expect, c)
+		})
+	}
+}
+
+func TestValueFormatting(t *testing.T) {
+	assert := assert.New(t)
+	ws, err := widget.LoadWidgets("testdata/config.toml")
+	assert.NoError(err)
+	wdgt := ws[0]
+
+	var tests = []struct {
+		metric string
+		value  float64
+		expect string
+	}{
+		{"temperature", 10.0, "10°"},
+		{"temperature", 10.1, "10.1°"},
+		{"temperature", 10.23, "10.2°"},
+		{"temperature", 10.44, "10.4°"},
+		{"temperature", 10.45, "10.4°"},
+		{"temperature", 10.456, "10.4°"},
+		{"rainfall", 38, "38mm"},
+		{"rainfall", 38.4, "38.4mm"},
+		{"rainfall", 38.44, "38.4mm"},
+		{"rainfall", 38.45, "38.4mm"},
+		{"rainfall", 38.404192495368754, "38.4mm"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%s/%.4f", tc.metric, tc.value), func(t *testing.T) {
+			samples := Samples{tc.metric: tc.value}
+			w := addDataFromSamples(wdgt, &samples)
+			assert.Equal(tc.expect, w.Data[tc.metric])
 		})
 	}
 }

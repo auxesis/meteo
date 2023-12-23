@@ -5,9 +5,9 @@ setup:
 	npm install prettier prettier-plugin-toml --save-dev --save-exact
 
 build:
-	env GOOS=linux GOARCH=arm GOARM=5 go build -o weather_widget-linux-arm5
-	env GOOS=linux GOARCH=amd64 GOARM=5 go build -o weather_widget-linux-amd64
-	env GOOS=darwin GOARCH=amd64 go build -o weather_widget-macos-amd64
+	env GOOS=linux GOARCH=arm GOARM=5 go build -o weather_widget-linux-arm5 widget.go
+	env GOOS=linux GOARCH=amd64 GOARM=5 go build -o weather_widget-linux-amd64 widget.go
+	env GOOS=darwin GOARCH=amd64 go build -o weather_widget-macos-amd64 widget.go
 
 test: gotest goerrcheck gostaticcheck
 

@@ -1,4 +1,4 @@
-package main
+package prometheus
 
 import (
 	"context"
@@ -7,11 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/auxesis/meteo/widget/internal/http"
+	"github.com/auxesis/meteo/widget/internal/widget"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
-func pollForSamples(wdgts []Widget, samples *Samples) {
+// PollForSamples polls a Prometheus endpoint, and updates the cache of samples
+func PollForSamples(wdgts []widget.Widget, samples *http.Samples) {
 	w := wdgts[0]
 	client, err := api.NewClient(api.Config{
 		Address: w.PrometheusURL,
@@ -29,7 +32,7 @@ func pollForSamples(wdgts []Widget, samples *Samples) {
 	}
 }
 
-func fetchPrometheus(v1api v1.API, w Widget, samples *Samples) {
+func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples) {
 	log.Printf("debug: polling Prometheus\n")
 	for k, v := range w.Metrics {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
