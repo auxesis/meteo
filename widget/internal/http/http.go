@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 
@@ -57,7 +58,13 @@ func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples) func(w http.Resp
 func addDataFromSamples(w widget.Widget, s *Samples) widget.Widget {
 	for k, c := range w.Metrics {
 		f := (*s)[k]
-		v := decimal.NewFromFloat(f)
+		var v decimal.Decimal
+		if math.IsNaN(f) {
+			log.Printf("warning: %s is NaN, returning -1\n", k)
+			v = decimal.New(-1, 0)
+		} else {
+			v = decimal.NewFromFloat(f)
+		}
 
 		var vs string
 		if v.Exponent() > -2 {

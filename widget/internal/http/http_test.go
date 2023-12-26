@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -278,6 +279,7 @@ func TestValueFormatting(t *testing.T) {
 		{"rainfall", 38.44, "38.4mm"},
 		{"rainfall", 38.45, "38.4mm"},
 		{"rainfall", 38.404192495368754, "38.4mm"},
+		{"rainfall", math.NaN(), "-1mm"},
 	}
 
 	for _, tc := range tests {
