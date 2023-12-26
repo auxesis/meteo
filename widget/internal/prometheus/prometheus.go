@@ -26,8 +26,8 @@ func PollForSamples(wdgts []widget.Widget, samples *http.Samples) {
 
 	fetchPrometheus(v1api, w, samples) // first tick
 
-	c := time.Tick(90 * time.Second)
-	for range c {
+	ticker := time.NewTicker(90 * time.Second)
+	for range ticker.C {
 		fetchPrometheus(v1api, w, samples)
 	}
 }
