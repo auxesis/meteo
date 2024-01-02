@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/auxesis/meteo/widget/internal/feedback"
 	"github.com/auxesis/meteo/widget/internal/widget"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,8 @@ func TestWidgetsSetsContentType(t *testing.T) {
 	r := httptest.NewRequest("GET", "http://example.com/widgets/hello", nil)
 	var ws []widget.Widget
 	var s Samples
-	HandleWidgetQuery(ws, &s)(w, r)
+	var st feedback.Status
+	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 	assert.Equal(res.Header.Get("Content-Type"), "application/json")
 }
@@ -44,9 +46,11 @@ func TestWidgetsLookupByIDAndReturnsNotFound(t *testing.T) {
 		t.Run(tc.url, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", tc.url, nil)
+			tc.widget.Data = make(map[string]string)
 			ws := []widget.Widget{tc.widget}
 			var s Samples
-			HandleWidgetQuery(ws, &s)(w, r)
+			var st feedback.Status
+			HandleWidgetQuery(ws, &s, &st)(w, r)
 			res := w.Result()
 			assert.Equal(tc.status, res.StatusCode)
 		})
@@ -60,7 +64,8 @@ func TestWidgetsHasData(t *testing.T) {
 	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	HandleWidgetQuery(ws, &s)(w, r)
+	var st feedback.Status
+	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -86,7 +91,8 @@ func TestWidgetsHasColours(t *testing.T) {
 	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	HandleWidgetQuery(ws, &s)(w, r)
+	var st feedback.Status
+	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -114,7 +120,8 @@ func TestWidgetsUsesDataRefs(t *testing.T) {
 	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	HandleWidgetQuery(ws, &s)(w, r)
+	st := feedback.Status{true, ""}
+	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -157,7 +164,8 @@ func TestWidgetsUsesLatestSamples(t *testing.T) {
 	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	s := Samples{"temperature": 30.2, "humidity": 50, "rainfall": 1.2, "wind_gust": 3.6}
-	HandleWidgetQuery(ws, &s)(w, r)
+	st := feedback.Status{true, ""}
+	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 
 	body, err := io.ReadAll(res.Body)
@@ -177,6 +185,30 @@ func TestWidgetsUsesLatestSamples(t *testing.T) {
 			assert.Equal(s[k], d)
 		}
 	}
+}
+
+func TestWidgetsShowsErrorsWhenFeedback(t *testing.T) {
+	assert := assert.New(t)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
+	ws, err := widget.LoadWidgets("testdata/config.toml")
+	assert.NoError(err)
+	s := Samples{}
+	st := feedback.Status{Ok: false, Message: "omg"}
+	HandleWidgetQuery(ws, &s, &st)(w, r)
+	res := w.Result()
+
+	body, err := io.ReadAll(res.Body)
+	assert.NoError(err)
+
+	var widget widget.Widget
+	err = json.Unmarshal(body, &widget)
+	assert.NoError(err)
+	assert.NotEmpty(widget.Layouts)
+	assert.Equal(widget.Data["status"], st.Message)
+}
+
+func TestWidgetsRecoversOnFeedback(t *testing.T) {
 }
 
 func TestWidgetsUsesColorsForThresholds(t *testing.T) {
@@ -200,7 +232,8 @@ func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 			s := Samples{tc.metric: tc.value, "humidity": 0, "rainfall": 0, "wind_gust": 0}
-			HandleWidgetQuery(ws, &s)(w, r)
+			var st feedback.Status
+			HandleWidgetQuery(ws, &s, &st)(w, r)
 			res := w.Result()
 
 			body, err := io.ReadAll(res.Body)

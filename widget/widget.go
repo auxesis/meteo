@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/auxesis/meteo/widget/internal/feedback"
 	api "github.com/auxesis/meteo/widget/internal/http"
 	"github.com/auxesis/meteo/widget/internal/prometheus"
 	"github.com/auxesis/meteo/widget/internal/widget"
@@ -29,8 +30,11 @@ func main() {
 	}
 
 	samples := api.Samples{}
-	go prometheus.PollForSamples(widgets, &samples)
-	http.HandleFunc("/", api.HandleWidgetQuery(widgets, &samples))
+	sigs := make(chan feedback.Signal, 1024)
+	status := feedback.Status{}
+	go prometheus.PollForSamples(widgets, &samples, sigs)
+	go feedback.ProcessSignals(sigs, &status)
+	http.HandleFunc("/", api.HandleWidgetQuery(widgets, &samples, &status))
 
 	log.Printf("info: starting server on port %d", port)
 	for _, w := range widgets {

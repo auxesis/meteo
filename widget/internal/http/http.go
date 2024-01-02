@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/auxesis/meteo/widget/internal/feedback"
 	"github.com/auxesis/meteo/widget/internal/widget"
 	"github.com/shopspring/decimal"
 )
@@ -16,7 +17,7 @@ import (
 type Samples map[string]float64
 
 // HandleWidgetQuery handles rendering a widget in the WCS widget.json format
-func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples) func(w http.ResponseWriter, r *http.Request) {
+func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples, status *feedback.Status) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("request: %s", r.URL)
 		w.Header().Add("Content-Type", "application/json")
@@ -47,6 +48,7 @@ func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples) func(w http.Resp
 		}
 		widget = addDataFromSamples(widget, samples)
 		widget = adjustColorsFromThresholds(widget, samples)
+		widget = addDataFromFeedback(widget, status)
 		err := json.NewEncoder(w).Encode(widget)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -74,6 +76,17 @@ func addDataFromSamples(w widget.Widget, s *Samples) widget.Widget {
 		}
 		w.Data[k] = fmt.Sprintf("%s%s", vs, c.DisplayUnit)
 	}
+	return w
+}
+
+// addDataFromFeedback populates a widget's data with the latest feedback
+func addDataFromFeedback(w widget.Widget, s *feedback.Status) widget.Widget {
+	if s.Ok {
+		delete(w.Data, "status")
+	} else {
+		w.Data["status"] = s.Message
+	}
+
 	return w
 }
 
