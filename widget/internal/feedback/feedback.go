@@ -26,8 +26,9 @@ type Status struct {
 // The only data collector right now is Prometheus.
 func ProcessSignals(sigs chan Signal, status *Status) {
 	for {
-		s := <-sigs
+		//s :=
+		<-sigs
 		status.Ok = false
-		status.Message = s.Error.Error()
+		status.Message = "Unable to fetch latest data"
 	}
 }

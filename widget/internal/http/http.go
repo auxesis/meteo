@@ -34,22 +34,27 @@ func HandleWidgetQuery(wdgts []widget.Widget, samples *Samples, status *feedback
 		q := r.URL.Query()
 		t := q.Get("token")
 
-		var widget widget.Widget
+		var wdgt widget.Widget
 		for _, wi := range wdgts {
 			if wi.ID == id && wi.Token == t {
-				widget = wi
+				wdgt = wi
 				break
 			}
 		}
-		if len(widget.ID) == 0 && len(widget.Token) == 0 {
+		if len(wdgt.ID) == 0 && len(wdgt.Token) == 0 {
 			log.Printf("error: unable to find widget for ID \"%s\" and token \"%s\"", id, t)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		widget = addDataFromSamples(widget, samples)
-		widget = adjustColorsFromThresholds(widget, samples)
-		widget = addDataFromFeedback(widget, status)
-		err := json.NewEncoder(w).Encode(widget)
+		if status.Ok {
+			wdgt.Layouts = widget.WeatherLayout
+			wdgt = addDataFromSamples(wdgt, samples)
+			wdgt = adjustColorsFromThresholds(wdgt, samples)
+		} else {
+			wdgt.Layouts = widget.ErrorLayout
+			wdgt = addDataFromFeedback(wdgt, status)
+		}
+		err := json.NewEncoder(w).Encode(wdgt)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}

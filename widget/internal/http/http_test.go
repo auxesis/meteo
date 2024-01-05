@@ -64,7 +64,7 @@ func TestWidgetsHasData(t *testing.T) {
 	ws, err := widget.LoadWidgets("testdata/config.toml")
 	assert.NoError(err)
 	var s Samples
-	var st feedback.Status
+	st := feedback.Status{true, ""}
 	HandleWidgetQuery(ws, &s, &st)(w, r)
 	res := w.Result()
 
@@ -208,7 +208,40 @@ func TestWidgetsShowsErrorsWhenFeedback(t *testing.T) {
 	assert.Equal(widget.Data["status"], st.Message)
 }
 
-func TestWidgetsRecoversOnFeedback(t *testing.T) {
+func TestWidgetsShowDifferentLayoutsWhenError(t *testing.T) {
+	assert := assert.New(t)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
+	ws, err := widget.LoadWidgets("testdata/config.toml")
+	assert.NoError(err)
+	s := Samples{}
+	st := feedback.Status{Ok: false, Message: "Unable to fetch latest weather data."}
+	HandleWidgetQuery(ws, &s, &st)(w, r)
+	res := w.Result()
+
+	body, err := io.ReadAll(res.Body)
+	assert.NoError(err)
+
+	var widget widget.Widget
+	err = json.Unmarshal(body, &widget)
+	assert.NoError(err)
+	assert.Equal(widget.Data["status"], st.Message)
+
+	var refs []string
+	assert.NotEmpty(widget.Layouts)
+	for _, lyts := range widget.Layouts {
+		assert.NotEmpty(lyts.Layers)
+		for _, lyrs := range lyts.Layers {
+			assert.NotEmpty(lyrs.Rows)
+			for _, r := range lyrs.Rows {
+				for _, c := range r.Cells {
+					refs = append(refs, c.Text.DataRef)
+				}
+			}
+		}
+	}
+	assert.NotEmpty(refs)
+	assert.Contains(refs, "status")
 }
 
 func TestWidgetsUsesColorsForThresholds(t *testing.T) {
@@ -232,7 +265,7 @@ func TestWidgetsUsesColorsForThresholds(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "http://a.test/widgets/sydney?token=s3cr3t", nil)
 			s := Samples{tc.metric: tc.value, "humidity": 0, "rainfall": 0, "wind_gust": 0}
-			var st feedback.Status
+			st := feedback.Status{true, ""}
 			HandleWidgetQuery(ws, &s, &st)(w, r)
 			res := w.Result()
 

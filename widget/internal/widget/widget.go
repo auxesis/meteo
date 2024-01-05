@@ -73,7 +73,58 @@ type Text struct {
 	MinScaleFactor float64 `json:"min_scale_factor,omitempty"`
 }
 
-var layouts = map[string]Layout{
+// ErrorLayout is the layout used to render error messages
+var ErrorLayout = map[string]Layout{
+	"error": Layout{
+		Size: "small",
+		Styles: Styles{
+			Colors: map[string]Color{
+				"black":      Color{Color: "#000000"},
+				"stone-100":  Color{Color: "#f5f5f4"},
+				"stone-950":  Color{Color: "#0c0a09"},
+				"blue-500":   Color{Color: "#3b82f6"},
+				"green-500":  Color{Color: "#84cc16"},
+				"yellow-500": Color{Color: "#facc15"},
+				"red-500":    Color{Color: "#ef4444"},
+			},
+		},
+		Layers: []Layer{
+			Layer{
+				Rows: []Row{{
+					Height: 12,
+					Cells: []Cell{{
+						Width:                12,
+						BackgroundColorStyle: "stone-950",
+					}},
+				}},
+			},
+			Layer{
+				Rows: []Row{
+					{Height: 1},
+					{
+						Height: 2.75,
+						Cells: []Cell{
+							{
+								Width:   12,
+								Padding: 1.15,
+								Text: Text{
+									DataRef:       "status",
+									Size:          8,
+									ColorStyle:    "yellow-500",
+									Weight:        "bold",
+									Justification: "left",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+// WeatherLayout is the layout used to render the weather widget
+var WeatherLayout = map[string]Layout{
 	"weather_small": Layout{
 		Size: "small",
 		Styles: Styles{
@@ -176,7 +227,6 @@ func LoadWidgets(configPath string) (widgets []Widget, err error) {
 	if err != nil {
 		return widgets, err
 	}
-	widget.Layouts = layouts
 	widget.Data = map[string]string{"content_url": widget.WidgetURL}
 	return []Widget{widget}, err
 }
