@@ -28,13 +28,13 @@ func PollForSamples(wdgts []widget.Widget, samples *http.Samples, errs chan feed
 
 	fetchPrometheus(v1api, w, samples, errs) // first tick
 
-	ticker := time.NewTicker(90 * time.Second)
+	ticker := time.NewTicker(w.FetchInterval)
 	for range ticker.C {
 		fetchPrometheus(v1api, w, samples, errs)
 	}
 }
 
-func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples, errs chan feedback.Signal) {
+func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples, sigs chan feedback.Signal) {
 	log.Printf("debug: polling Prometheus\n")
 	for k, v := range w.Metrics {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -42,7 +42,7 @@ func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples, errs 
 		result, warnings, err := v1api.Query(ctx, v.PrometheusQuery, time.Now(), v1.WithTimeout(10*time.Second))
 		if err != nil {
 			log.Printf("error: unable to query Prometheus: %s\n", err)
-			errs <- feedback.NewSignal(err)
+			sigs <- feedback.NewSignalWithError(k, err)
 			continue
 		}
 		if len(warnings) > 0 {
@@ -51,16 +51,17 @@ func fetchPrometheus(v1api v1.API, w widget.Widget, samples *http.Samples, errs 
 		if len(result.String()) == 0 {
 			err := fmt.Errorf("no data from Prometheus when scraping %s (%s)", k, v.PrometheusQuery)
 			log.Printf("warning: %s\n", err)
-			errs <- feedback.NewSignal(err)
+			sigs <- feedback.NewSignalWithError(k, err)
 			continue
 		}
 		results := strings.Split(result.String(), " ")
 		v, err := strconv.ParseFloat(results[len(results)-2], 64)
 		if err != nil {
 			log.Printf("error: unable to parse value from Prometheus: %s\n", err)
-			errs <- feedback.NewSignal(err)
+			sigs <- feedback.NewSignalWithError(k, err)
 			continue
 		}
 		(*samples)[k] = v
+		sigs <- feedback.NewSignal(k)
 	}
 }

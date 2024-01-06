@@ -1,6 +1,8 @@
 package widget
 
 import (
+	"time"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -15,6 +17,7 @@ type Widget struct {
 	Metrics       map[string]MetricConfig `json:"-"`
 	WidgetURL     string                  `json:"-" toml:"widget_url"`
 	PrometheusURL string                  `json:"-" toml:"prometheus_url"`
+	FetchInterval time.Duration           `json:"-" toml:"prometheus_fetch_interval"`
 }
 
 // MetricConfig defines how to gather and display a metric as data
