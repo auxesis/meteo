@@ -14,6 +14,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPrometheusFeedbackIsSentWhenOk(t *testing.T) {
+	assert := assert.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"temperature_celsius","instance":"localhost:10000","job":"prometheus"},"value":[1704115202.421,"1.0"]}]}}`)
+	}))
+	client, err := api.NewClient(api.Config{
+		Address: ts.URL,
+	})
+	assert.NoError(err)
+	v1api := v1.NewAPI(client)
+	w := widget.Widget{Metrics: map[string]widget.MetricConfig{"temperature": widget.MetricConfig{PrometheusQuery: "outdoor_temperature_celsius"}}}
+	samples := h.Samples{}
+	feedback := make(chan feedback.Signal, 1)
+
+	fetchPrometheus(v1api, w, &samples, feedback)
+
+	assert.NotEmpty(feedback)
+	f := <-feedback
+	assert.True(f.Ok)
+	assert.NoError(f.Error)
+	assert.Equal(f.Metric, "temperature")
+}
+
 func TestPrometheusFeedbackIsSentWhenPrometheusUnavailable(t *testing.T) {
 	assert := assert.New(t)
 
@@ -74,5 +98,6 @@ func TestPrometheusFeedbackIsSentWhenValueWeird(t *testing.T) {
 
 	assert.NotEmpty(feedback)
 	f := <-feedback
+	assert.Error(f.Error)
 	assert.Contains(f.Error.Error(), "strconv.ParseFloat")
 }
