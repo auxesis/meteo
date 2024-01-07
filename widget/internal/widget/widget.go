@@ -25,6 +25,7 @@ type MetricConfig struct {
 	DisplayUnit     string `toml:"display_unit"`
 	PrometheusQuery string `toml:"prometheus_query"`
 	Levels          map[string]int
+	DampenOutliers  bool `toml:"dampen_outliers"`
 }
 
 // Layout is a layout for a widget.json widget

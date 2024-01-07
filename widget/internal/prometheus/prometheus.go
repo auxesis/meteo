@@ -27,12 +27,12 @@ func PollForSamples(wdgts []widget.Widget, samples *http.Samples, errs chan feed
 	v1api := v1.NewAPI(client)
 
 	latest := fetchPrometheus(v1api, w, errs) // first tick
-	updateSamples(samples, latest)
+	updateSamples(samples, latest, w)
 
 	ticker := time.NewTicker(w.FetchInterval)
 	for range ticker.C {
 		latest = fetchPrometheus(v1api, w, errs)
-		updateSamples(samples, latest)
+		updateSamples(samples, latest, w)
 	}
 }
 
@@ -73,7 +73,7 @@ func fetchPrometheus(v1api v1.API, w widget.Widget, sigs chan feedback.Signal) h
 // updateSamples takes a new http.Samples and updates an existing http.Samples
 // updateSamples doesn't update if there's a > 50% variation in the value.
 // This is done to handle weird outlier measurements returned by the weather station.
-func updateSamples(old *http.Samples, latest http.Samples) {
+func updateSamples(old *http.Samples, latest http.Samples, w widget.Widget) {
 	for k, l := range latest {
 		var d float64
 		o := (*old)[k]
@@ -89,10 +89,14 @@ func updateSamples(old *http.Samples, latest http.Samples) {
 		case l < o:
 			d = o - l
 		}
-		if d/o <= 0.5 {
-			(*old)[k] = l
+		if w.Metrics[k].DampenOutliers {
+			if d/o <= 0.5 {
+				(*old)[k] = l
+			} else {
+				log.Printf("debug: ignoring update: > 50%% change on %s (%f, %f)", k, o, l)
+			}
 		} else {
-			log.Printf("debug: ignoring update: > 50%% change on %s (%f, %f)", k, o, l)
+			(*old)[k] = l
 		}
 	}
 }

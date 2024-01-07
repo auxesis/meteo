@@ -101,27 +101,29 @@ func TestPrometheusFeedbackIsSentWhenValueWeird(t *testing.T) {
 func TestPrometheusDoesNotUpdateWhenDeltaTooLarge(t *testing.T) {
 	assert := assert.New(t)
 
+	w := widget.Widget{Metrics: map[string]widget.MetricConfig{"temperature": widget.MetricConfig{DampenOutliers: true}}}
 	type test struct {
 		name      string
 		current   h.Samples
 		changes   h.Samples
+		widget    widget.Widget
 		different bool
 	}
 	tests := []test{
-		{"initial", h.Samples{"temperature": 0.0}, h.Samples{"temperature": 10.0}, true},
-		{"no change", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 10.0}, true}, // not actually true, but we need to trigger the right test path
-		{"20% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 12.0}, true},
-		{"50% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 15.0}, true},
-		{"100% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 20.0}, false},
-		{"150% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 25.0}, false},
-		{"20% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 8.0}, true},
-		{"50% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 5.0}, true},
-		{"100% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 0.0}, false},
-		{"150% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": -5.0}, false},
+		{"initial", h.Samples{"temperature": 0.0}, h.Samples{"temperature": 10.0}, w, true},
+		{"no change", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 10.0}, w, true}, // not actually true, but we need to trigger the right test path
+		{"20% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 12.0}, w, true},
+		{"50% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 15.0}, w, true},
+		{"100% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 20.0}, w, false},
+		{"150% increase", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 25.0}, w, false},
+		{"20% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 8.0}, w, true},
+		{"50% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 5.0}, w, true},
+		{"100% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 0.0}, w, false},
+		{"150% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": -5.0}, w, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			updateSamples(&tc.current, tc.changes)
+			updateSamples(&tc.current, tc.changes, w)
 			if tc.different {
 				// current should be updated to match changes
 				assert.Equal(tc.current, tc.changes)
