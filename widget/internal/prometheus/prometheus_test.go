@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -120,6 +121,9 @@ func TestPrometheusDoesNotUpdateWhenDeltaTooLarge(t *testing.T) {
 		{"50% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 5.0}, w, true},
 		{"100% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": 0.0}, w, false},
 		{"150% decrease", h.Samples{"temperature": 10.0}, h.Samples{"temperature": -5.0}, w, false},
+		{"NaN new", h.Samples{"temperature": 10.0}, h.Samples{"temperature": math.NaN()}, w, false}, // not actually false, but math.NaN() != math.NaN()
+		{"NaN old", h.Samples{"temperature": math.NaN()}, h.Samples{"temperature": 10.0}, w, true},
+		{"NaN both", h.Samples{"temperature": math.NaN()}, h.Samples{"temperature": math.NaN()}, w, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

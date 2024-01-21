@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -89,6 +90,12 @@ func updateSamples(old *http.Samples, latest http.Samples, w widget.Widget) {
 		case l < o:
 			d = o - l
 		}
+		if math.IsNaN(l) || math.IsNaN(o) {
+			(*old)[k] = l
+			log.Printf("debug: blindly updating: got NaN value on %s (old: %f, new: %f)", k, o, l)
+			continue
+		}
+
 		if w.Metrics[k].DampenOutliers {
 			if d/o <= 0.5 {
 				(*old)[k] = l
